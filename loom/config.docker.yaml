@@ -1,0 +1,57 @@
+# Loom
+# config.docker.yaml
+
+engine:
+  host: 0.0.0.0
+  port: 8000
+  log_level: info
+
+sources:
+
+  browser_atlas:
+    type: browser_atlas
+    enabled: true
+    path: /loom/sources/dreamdb
+    pattern: "dream_atlas_*.sqlite"
+    app_ids: [browser, atlas]
+
+  lab:
+    type: lab
+    enabled: true
+    path: /loom/sources/lab
+    pattern: "lucidlab*.db"
+    preferred_language: sl
+
+  oneiro:
+    type: oneiro
+    enabled: true
+    export_path: /loom/sources/oneiro
+
+backfill:
+  batch_size: 50
+  delay_ms: 100
+  resume: true
+
+embedding:
+  model: paraphrase-multilingual-MiniLM-L12-v2
+  provider: local
+  batch_size: 32
+  delay_ms: 0
+
+clustering:
+  # UMAP redukcija 384d → 50d pred clusteringom
+  # Pohitri clustering 10-50x in izboljša kvaliteto
+  umap_components: 50
+  umap_neighbors: 15
+
+  # HDBSCAN parametri (na UMAP prostoru)
+  min_cluster_size: 10   # min sanj za veljaven cluster
+  min_samples: 3         # gostota za noise detekcijo
+  metric: cosine
+  epsilon: 0.0           # strogo z UMAP
+
+storage:
+  path: /loom/storage
+  state_db: /loom/storage/state.db
+  embeddings_db: /loom/storage/embeddings.db
+  clusters_db: /loom/storage/clusters.db

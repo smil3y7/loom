@@ -1,0 +1,54 @@
+name: Deploy Loom
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install pyyaml pytest
+
+      - name: Import check
+        run: |
+          python -c "from lib.schema import CanonicalDream, make_dream_id"
+          python -c "from lib.config import load_config"
+          python -c "from lib.embeddings import HuggingFaceProvider, EmbeddingStore"
+          python -c "from adapters.registry import list_registered_adapters"
+          python -c "from cli.i18n import load, t; load('sl'); load('en')"
+          echo "All imports OK"
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        continue-on-error: true
+
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy
+        run: vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --prod --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f13;
+      color: #e8e4dc;
+    }
+
+    .header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid #1e1e28;
+    }
+
+    .header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #c8b8a2;
+    }
+
+    .header p {
+      font-size: 11px;
+      color: #6b6878;
+      margin-top: 3px;
+    }
+
+    .status {
+      padding: 14px 18px;
+      font-size: 12px;
+      color: #6b6878;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status.ok     { color: #7aad8a; }
+    .status.error  { color: #ad7a7a; }
+    .status.working { color: #8a9aad; }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .dot.pulse {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .actions {
+      padding: 0 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    button {
+      width: 100%;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #3d3560;
+      color: #d4c8f0;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #4a4070;
+    }
+
+    .btn-secondary {
+      background: #1a1a22;
+      color: #6b6878;
+      font-size: 11px;
+      padding: 7px 14px;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #222230;
+      color: #9a96a8;
+    }
+
+    .meta {
+      padding: 0 18px 14px;
+      font-size: 10px;
+      color: #3a3848;
+    }
+
+    .wrong-page {
+      padding: 14px 18px;
+      font-size: 12px;
+      color: #6b6878;
+      line-height: 1.5;
+    }
+
+    .wrong-page a {
+      color: #8a7ab0;
+      text-decoration: none;
+    }
+
+    .wrong-page a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Loom Sync</h1>
+    <p id="subtitle">Oneiro → Loom</p>
+  </div>
+
+  <div id="main">
+    <!-- populated by popup.js -->
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

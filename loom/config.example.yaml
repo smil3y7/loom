@@ -1,0 +1,79 @@
+# Loom
+# Configuration — CCP v0.1
+#
+# Copy this file to config.yaml and adjust paths for your environment.
+# config.yaml is gitignored — never commit it (contains local paths).
+
+engine:
+  host: localhost
+  port: 8000
+  log_level: info
+
+# ---------------------------------------------------------------------------
+# Source applications
+# ---------------------------------------------------------------------------
+# Each source has:
+#   type:    adapter type (browser_atlas | lab | oneiro)
+#   enabled: true/false (default: true)
+#   path:    path to database file or directory
+#   pattern: glob pattern for dated files (optional, e.g. dream_atlas_*.sqlite)
+#
+# Paths use forward slashes on all platforms.
+# Windows paths: C:/Users/sasod/... or \\wsl$\...
+
+sources:
+
+  browser_atlas:
+    type: browser_atlas
+    enabled: true
+    # Directory containing the dated SQLite file
+    path: C:/Users/sasod/Documents/_Sanjanje/DreamDB
+    # Glob pattern — adapter picks most recently modified match
+    pattern: "dream_atlas_*.sqlite"
+    # Which app IDs map to this source (informational)
+    app_ids: [browser, atlas]
+
+  lab:
+    type: lab
+    enabled: true
+    # Docker volume path via WSL2 (verify exact volume name with: docker volume inspect lucid_lab_lucidlab_data)
+    path: "\\\\wsl$\\docker-desktop-data\\data\\docker\\volumes\\lucid_lab_lucidlab_data\\_data\\lucidlab.db"
+    # Alternatively, if running Loom inside Docker with shared volume:
+    # path: /loom/sources/lab/lucidlab.db
+    preferred_language: sl
+
+  oneiro:
+    type: oneiro
+    enabled: true
+    # Directory where Oneiro exports JSON files
+    # Adapter uses the most recently modified *.json file
+    export_path: C:/Users/sasod/Documents/_Sanjanje/Oneiro/exports
+
+# ---------------------------------------------------------------------------
+# Backfill settings
+# ---------------------------------------------------------------------------
+backfill:
+  batch_size: 50        # dreams per batch
+  delay_ms: 100         # ms pause between batches (be gentle on APIs)
+  resume: true          # skip already-processed dreams (safe to re-run)
+
+# ---------------------------------------------------------------------------
+# Embedding settings
+# ---------------------------------------------------------------------------
+embedding:
+  model: paraphrase-multilingual-MiniLM-L12-v2
+  # provider options:
+  #   huggingface_api  — Hugging Face Inference API (free tier, no local GPU needed)
+  #   local            — run model locally (needs more RAM, faster for bulk)
+  provider: huggingface_api
+  # huggingface_api_key: set via environment variable HF_API_KEY (never in config)
+
+# ---------------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------------
+storage:
+  # Where engine stores its own data (embeddings, clusters, state)
+  # Never the same as any source app's database
+  path: C:/Users/sasod/Documents/_Sanjanje/Loom/continuity_storage
+  # State DB (backfill progress tracking)
+  state_db: C:/Users/sasod/Documents/_Sanjanje/Loom/continuity_storage/state.db

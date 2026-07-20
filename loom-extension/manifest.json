@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Loom Sync",
+  "version": "0.1.0",
+  "description": "Sync Oneiro dreams to Loom continuity engine",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://oneiro-delta.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

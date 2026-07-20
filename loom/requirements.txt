@@ -1,0 +1,23 @@
+# Loom — Python dependencies
+
+# ── Core ──────────────────────────────────────────────────────────────────────
+pyyaml>=6.0
+langdetect>=1.0.9
+
+# ── Embeddings (lokalni model) ────────────────────────────────────────────────
+sentence-transformers>=2.7.0
+torch>=2.0.0
+
+# ── Clustering ────────────────────────────────────────────────────────────────
+hdbscan>=0.8.33
+umap-learn>=0.5.6
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# ── API ───────────────────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn>=0.27.0
+pydantic>=2.0.0
+
+# ── Vercel adapter (za cloud deployment) ──────────────────────────────────────
+mangum>=0.17.0

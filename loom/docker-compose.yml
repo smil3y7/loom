@@ -1,0 +1,31 @@
+version: "3.9"
+
+# Loom — samostojen container
+
+services:
+
+  loom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: loom_engine
+    volumes:
+      - ./sources/dreamdb:/loom/sources/dreamdb:ro
+      - ./sources/lab:/loom/sources/lab:ro
+      - ./sources/oneiro:/loom/sources/oneiro:ro
+
+      # Bind mount — storage je direktno vidna Windows mapa
+      # Kopiraj med računalniki kot navadno mapo
+      - ./storage:/loom/storage
+
+      - ./config.docker.yaml:/loom/config.yaml:ro
+
+    environment:
+      # Hugging Face API token
+      # Dobil na: huggingface.co → Settings → Access Tokens → New token (Read)
+      # ZAMENJAJ hf_xxxx z dejanskim tokenom
+      - HF_API_KEY=hf_xxxx
+
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

@@ -1,0 +1,12 @@
+config.yaml
+*.db
+*.sqlite
+continuity_storage/
+export_*.json
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+node_modules/
+.vercel/
