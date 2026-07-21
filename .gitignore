@@ -1,3 +1,11 @@
+# Local folders (NB)
 **/_code/
 **/_resources/
 **/_versions/
+
+# Local folders (PC)
+_docs/
+_loom_default/
+_resources_backup/
+_temp_code_upload/
+_versions/
