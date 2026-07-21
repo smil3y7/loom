@@ -1,0 +1,40 @@
+name: Backend testi
+
+# Poženi samo če se je spremenilo kaj v loom/ (backend) — brez tega bi
+# vsak UI/extension commit po nepotrebnem čakal na Python test run.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'loom/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'loom/**'
+      - '.github/workflows/backend-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Nastavi Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: loom/requirements.txt
+
+      - name: Namesti odvisnosti
+        working-directory: loom
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Poženi teste
+        working-directory: loom
+        run: python -m pytest tests/ -v

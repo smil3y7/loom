@@ -1,0 +1,40 @@
+name: UI testi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'loom-ui/**'
+      - '.github/workflows/ui-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'loom-ui/**'
+      - '.github/workflows/ui-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Nastavi Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: loom-ui/package-lock.json
+
+      - name: Namesti odvisnosti
+        working-directory: loom-ui
+        run: npm ci
+
+      - name: Poženi teste
+        working-directory: loom-ui
+        run: npm run test
+
+      - name: Preveri da build dela
+        working-directory: loom-ui
+        run: npm run build

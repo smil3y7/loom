@@ -1,0 +1,40 @@
+name: Extension sintaksa
+
+# Extension nima pravega test suita (premalo logike da bi ga upravičila) —
+# ta workflow samo prepreči da bi se v main zlila sintaktično pokvarjena
+# JS datoteka ali neveljaven manifest.json (oboje se je med razvojem
+# že zgodilo in bi ju sicer opazili šele ročno v Chromu).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'loom-extension/**'
+      - '.github/workflows/extension-check.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'loom-extension/**'
+      - '.github/workflows/extension-check.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Nastavi Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Preveri sintakso JS datotek
+        working-directory: loom-extension
+        run: |
+          node -c background.js
+          node -c popup.js
+
+      - name: Preveri veljavnost manifest.json
+        working-directory: loom-extension
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('manifest.json OK')"
