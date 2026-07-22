@@ -9,11 +9,13 @@ on:
     branches: [main]
     paths:
       - 'loom-extension/**'
+      - 'VERSION'
       - '.github/workflows/extension-check.yml'
   pull_request:
     branches: [main]
     paths:
       - 'loom-extension/**'
+      - 'VERSION'
       - '.github/workflows/extension-check.yml'
 
 jobs:
@@ -38,3 +40,14 @@ jobs:
       - name: Preveri veljavnost manifest.json
         working-directory: loom-extension
         run: node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('manifest.json OK')"
+
+      - name: Preveri da je manifest.json usklajen z /VERSION
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          MANIFEST_VERSION=$(node -e "console.log(require('./loom-extension/manifest.json').version)")
+          if [ "$VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "manifest.json (${MANIFEST_VERSION}) se ne ujema z /VERSION (${VERSION})"
+            echo "Poženi: node scripts/sync-extension-version.js"
+            exit 1
+          fi
+          echo "manifest.json usklajen z /VERSION (${VERSION})"

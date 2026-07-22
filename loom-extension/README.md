@@ -1,5 +1,5 @@
 # Loom Sync — Browser Extension
-### Oneiro → Loom · v0.1
+### Oneiro → Loom
 
 ---
 
@@ -25,9 +25,9 @@
 
 ---
 
-## Preklopitev na API (Faza 5)
+## Preklopitev na API način
 
-Ko bo Loom API živ, spremenite **eno vrstico** v `background.js`:
+Loom backend zdaj dejansko shrani sanje poslane prek `/api/ingest` (prej ni — glej opombo spodaj), torej je API način funkcionalen. Spremeni v `background.js`:
 
 ```javascript
 // ZDAJ (download mode):
@@ -35,10 +35,12 @@ const DELIVERY_MODE = "download";
 
 // PO PREKLOPU (api mode):
 const DELIVERY_MODE = "api";
-const LOOM_API_URL = "https://your-loom.vercel.app/ingest"; // vaš URL
+const LOOM_API_URL = "http://localhost:8000/api/ingest"; // ne pozabi /api prefiksa
 ```
 
-Nato v `chrome://extensions` klikni **reload** na Loom Sync. To je vse.
+Nato v `chrome://extensions` klikni **reload** na Loom Sync.
+
+**Znana omejitev pri API načinu:** `dream_id` generiran v `background.js` (`makeUuid5`) uporablja poenostavljeno FNV hash funkcijo, **ni** bit-kompatibilen s pravim UUID5 ki ga generira Python backend (`lib/schema.py: make_dream_id`). To pomeni da ista sanja poslana prek extension in kasneje prebrana prek morebitnega direktnega Oneiro adapterja dobi **različna** `dream_id` — ne bo prepoznana kot ista sanja. Ni kritično dokler je edini vir za Oneiro sanje extension sam (ni duplikacije), ampak ni pravi UUID5. Popravek bi zahteval SubtleCrypto SHA-1 implementacijo v JS namesto trenutnega FNV hasha — ni bilo prioritetno dokler je bil "api" način neuporaben (glej git zgodovino za kontekst popravka `/api/ingest`).
 
 ---
 
@@ -46,6 +48,17 @@ Nato v `chrome://extensions` klikni **reload** na Loom Sync. To je vse.
 
 - Extension bere IndexedDB **samo ko je Oneiro odprt** v brskalniku
 - Nobeni podatki ne gredo skozi strežnik v download načinu
-- `dream_id` je identičen tistemu ki ga generira Python adapter
-  (deterministični UUID5 iz enakega namespace)
 - Extension nikoli ne piše v Oneiro — samo bere
+
+---
+
+## Verzioniranje
+
+`manifest.json` mora imeti verzijo usklajeno z [`/VERSION`](../VERSION) (koren repozitorija). Chrome zahteva statičen niz — ne more se brati dinamično. Pred pakiranjem za Chrome Web Store poženi:
+
+```bash
+node scripts/sync-extension-version.js
+```
+
+CI (`.github/workflows/extension-check.yml`) preveri ob vsakem pushu da `manifest.json` ni zaostal za `/VERSION`.
+

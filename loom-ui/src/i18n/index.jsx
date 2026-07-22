@@ -91,6 +91,10 @@ const TRANSLATIONS = {
     'settings.apiUrl.hint': 'Lokalno: http://localhost:8000',
     'settings.save': 'Shrani',
     'settings.saved': 'Shranjeno',
+    'settings.about': 'O aplikaciji',
+    'settings.version.ui': 'Verzija vmesnika',
+    'settings.version.backend': 'Verzija engine-a',
+    'settings.version.mismatch': 'Verziji se ne ujemata — priporočamo osvežitev strani ali posodobitev enega od delov.',
 
     // Help
     'help.title': 'Pomoč',
@@ -235,6 +239,10 @@ const TRANSLATIONS = {
     'settings.apiUrl.hint': 'Local: http://localhost:8000',
     'settings.save': 'Save',
     'settings.saved': 'Saved',
+    'settings.about': 'About',
+    'settings.version.ui': 'UI version',
+    'settings.version.backend': 'Engine version',
+    'settings.version.mismatch': 'Versions do not match — try refreshing the page or updating one of the components.',
 
     // Help
     'help.title': 'Help',

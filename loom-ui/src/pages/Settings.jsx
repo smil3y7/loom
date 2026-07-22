@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useI18n } from '../i18n/index.jsx'
 import { useTheme } from '../lib/theme.jsx'
+import { api } from '../lib/api.js'
 
 export default function Settings() {
   const { t, lang, setLang, languages } = useI18n()
@@ -9,12 +10,25 @@ export default function Settings() {
     localStorage.getItem('loom_api_url') || import.meta.env.VITE_API_URL || 'http://localhost:8000'
   )
   const [saved, setSaved] = useState(false)
+  const [backendVersion, setBackendVersion] = useState(null)
+
+  // UI verzija je vgrajena ob buildu (glej vite.config.js) — vedno
+  // ustreza dejansko naloženi kodi, ne rabi API klica.
+  const uiVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?'
+
+  useEffect(() => {
+    api.health()
+      .then(res => setBackendVersion(res.version))
+      .catch(() => setBackendVersion(null))
+  }, [])
 
   function handleSave() {
     localStorage.setItem('loom_api_url', apiUrl)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  const versionMismatch = backendVersion && backendVersion !== uiVersion
 
   return (
     <div className="page">
@@ -71,6 +85,22 @@ export default function Settings() {
             <button className="btn btn-primary" onClick={handleSave}>
               {saved ? t('settings.saved') : t('settings.save')}
             </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-title">{t('settings.about')}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div>{t('settings.version.ui')}: <strong>{uiVersion}</strong></div>
+            <div>
+              {t('settings.version.backend')}:{' '}
+              <strong>{backendVersion || t('common.unknown')}</strong>
+            </div>
+            {versionMismatch && (
+              <div style={{ color: 'var(--warn)', fontSize: 12, marginTop: 4 }}>
+                {t('settings.version.mismatch')}
+              </div>
+            )}
           </div>
         </div>
 

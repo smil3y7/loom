@@ -30,13 +30,14 @@ from pydantic import BaseModel
 
 from lib.schema import CanonicalDream, DreamMetadata
 from lib.config import load_config
+from lib.version import get_version
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Loom",
     description="Semantic Continuity Layer",
-    version="0.1.0",
+    version=get_version(),
     docs_url="/api/docs",
 )
 
@@ -286,7 +287,7 @@ async def health():
     return {
         "ok": True,
         "service": "loom",
-        "version": "0.1.0",
+        "version": get_version(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -342,7 +343,7 @@ async def api_status():
         sources_status["ingested_api"] = {"ok": False, "error": str(e)}
 
     return {
-        "version": "0.1.0",
+        "version": get_version(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "embeddings": embed_status,
         "clustering": cluster_status,

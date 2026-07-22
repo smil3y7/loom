@@ -1,107 +1,154 @@
-# Loom
-### CCP v0.1 — Semantic Continuity Layer
+# Loom — Backend
+### CCP v0.1 — Semantic Continuity Layer · sl
+
+Za angleško verzijo glej [README_EN.md](./README_EN.md).
 
 ---
 
-## Struktura map
+## Kaj je Loom
 
-```
-C:\Users\sasod\Documents\_Sanjanje\Loom\
-    ├── docker-compose.yml          ← tukaj
-    ├── start.bat                   ← dvoklik za zagon
-    ├── loom\         ← engine koda
-    │   ├── Dockerfile
-    │   ├── config.docker.yaml
-    │   ├── loom.py
-    │   ├── lib\
-    │   └── adapters\
-    └── sources\                    ← SEM daš baze
-        ├── dreamdb\
-        │   └── dream_atlas_*.sqlite
-        ├── lab\
-        │   └── lucidlab.db
-        └── oneiro\
-            └── export_*.json
-```
+Loom je semantična kontinuitetna plast za Sentria ekosistem. Deluje kot ozadnji servis ki:
+
+- bere sanje iz obstoječih appov (Dream Browser, Atlas, Lucid Lab, Oneiro) — read-only, izvornih baz nikoli ne spreminja
+- generira semantične embedinge za vsako sanje (lokalni model, brez interneta po prvem prenosu)
+- omogoča iskanje po arhivu v slovenščini in angleščini (isti rezultati za isti pomen)
+- zazna ponavljajoče vzorce prek UMAP + HDBSCAN clusteringa
+
+Filozofija: engine nikoli ne interpretira kaj sanje pomenijo — vzorce predlaga kot kandidate, uporabnik jih potrdi ali zavrne. Podrobneje v korenskem [`/README.md`](../README.md).
 
 ---
 
-## Setup (enkrat)
+## Sistemske zahteve
 
-### 1. Ustvari mapo sources\
+- Docker Desktop
+- 4 GB RAM (priporočeno 8 GB)
+- ~500 MB prostora na disku (embedding model, odvisnosti)
+- Internet potreben samo za prvi prenos embedding modela (~120MB) — po tem engine teče brez povezave
+
+---
+
+## Namestitev
+
+### 1. Mapna struktura
 
 ```
-C:\Users\sasod\Documents\_Sanjanje\Loom\sources\dreamdb\
-C:\Users\sasod\Documents\_Sanjanje\Loom\sources\lab\
-C:\Users\sasod\Documents\_Sanjanje\Loom\sources\oneiro\
+Loom\
+    ├── docker-compose.yml
+    ├── start.bat
+    ├── loom\                ← ta koda
+    ├── sources\
+    │   ├── dreamdb\         ← Dream Browser + Atlas SQLite baza
+    │   ├── lab\             ← Lucid Lab SQLite baza
+    │   └── oneiro\          ← Oneiro JSON exporti
+    └── storage\             ← Loom lastni podatki (nastane samodejno)
 ```
 
 ### 2. Kopiraj baze
 
-**Browser + Atlas:**
-Kopiraj `dream_atlas_*.sqlite` iz DreamDB mape v `sources\dreamdb\`
+**Dream Browser + Atlas:** kopiraj `dream_atlas_*.sqlite` v `sources\dreamdb\`
 
-**LucidLab:**
-Kopiraj `lucidlab.db` iz Docker volumna v `sources\lab\`
+**Lucid Lab:** Docker Desktop → container `lucid_lab` → **Files** → `/app/data/` → shrani `.db` v `sources\lab\`
 
-Najlažje iz Docker Desktop:
-- Klikni na `lucid_lab` container
-- Zavihek **Files**
-- Navigiraj na `/app/data/lucidlab.db`
-- Desni klik → **Save**
-- Shrani v `sources\lab\lucidlab.db`
+**Oneiro:** prek Loom Sync browser extension (glej [`../loom-extension/README.md`](../loom-extension/README.md)) — ali prek `/api/ingest` v "api" delivery mode.
 
-**Oneiro:**
-Exportiraj sanje iz Oneire kot JSON, shrani v `sources\oneiro\`
+### 3. Embedding provider (privzeto: lokalno, brez API ključa)
 
-### 3. Zaženi
+Privzeta nastavitev v `config.docker.yaml` je `provider: local` — model teče na tvojem računalniku, ni potreben noben API ključ. To je priporočena nastavitev.
 
-Dvoklik na `start.bat`
+Opcijsko, če želiš namesto lokalnega modela uporabiti Hugging Face API (počasnejše, potrebuje internet ob vsakem embedanju, ampak manjša lokalna poraba RAM-a): nastavi `provider: huggingface_api` v configu in v `docker-compose.yml` dodaj:
 
-### 4. Testiraj
+```yaml
+environment:
+  - HF_API_KEY=hf_tvoj_dejanski_token
+```
 
-Docker Desktop → `loom_engine` → Terminal:
+Token: https://huggingface.co → Settings → Access Tokens → New token (Read)
+
+### 4. Zaženi
+
+Dvoklik na `start.bat`. Prvi build traja dlje (namesti torch, hdbscan, prenese embedding model) — kasnejši zagon je hiter.
+
+---
+
+## Upravljanje
 
 ```bash
-python loom.py status
-python loom.py test-adapter browser_atlas
-python loom.py test-adapter lab
-python loom.py test-adapter oneiro
+docker exec -it loom_engine python loom.py          # interaktivni meni
+docker exec -it loom_engine python loom.py status    # hitri status
+```
+
+API dokumentacija (Swagger): `http://localhost:8000/api/docs`
+
+### Interaktivni meni
+
+```
+1. Status          preveri adapterje in baze
+2. Backfill        uvozi arhiv sanj v Loom
+3. Embedingi       generiraj semantične vektorje
+4. Iskanje         semantično iskanje po arhivu
+5. Vzorci          zaznaj ponavljajoče vzorce (clustering)
+6. Test adapterja  preveri posamezen vir
+7. Izvoz           izvozi sanje v JSON
+8. Jezik           spremeni jezik vmesnika
+q. Izhod
+```
+
+### Priporočen vrstni red ob prvi uporabi
+
+```
+1. Status     → preveri da Loom vidi vse baze
+2. Backfill   → uvozi arhiv (za 4000+ sanj ~5-10 minut)
+3. Embedingi  → generiraj vektorje (za 4000+ sanj lokalno ~15-20 minut)
+4. Vzorci     → zaznaj ponavljajoče vzorce (za 4000+ sanj ~2-5 minut)
+5. Iskanje    → preizkusi semantično iskanje
 ```
 
 ---
 
-## Sinhronizacija baz
-
-Baze so statične kopije — engine jih ne posodablja avtomatsko.
-
-Ko hočeš svežo sinhronizacijo:
-1. Kopiraj novo verzijo baze v `sources\`
-2. V terminalu: `python loom.py backfill --source browser_atlas`
-   (backfill preskoči že procesirane sanje — hiter)
-
----
-
-## CLI ukazi
+## Testi
 
 ```bash
-python loom.py status                       # zdravje + backfill stanje
-python loom.py backfill                     # backfill vseh virov
-python loom.py backfill --source lab        # samo Lab
-python loom.py backfill --reset             # pobriši stanje, procesira vse znova
-python loom.py test-adapter browser_atlas   # preveri adapter + vzorčni zapisi
-python loom.py export browser_atlas         # izvozi canonical JSON
-python loom.py export browser_atlas --limit 20
+pip install -r requirements.txt
+python -m pytest tests/ -v
 ```
+
+CI (`.github/workflows/backend-tests.yml`) to poganja samodejno ob vsakem pushu ki spremeni `loom/**`.
 
 ---
 
-## Faze razvoja
+## Verzioniranje
 
-- [x] **Faza 0** — Shema, adapterji, backfill infrastruktura, Docker
-- [ ] **Faza 1** — Embedding pipeline
-- [ ] **Faza 2** — Semantično iskanje
-- [ ] **Faza 3** — Storage (Supabase)
-- [ ] **Faza 4** — Clustering + detekcija threadov
-- [ ] **Faza 5** — FastAPI + Vercel
-- [ ] **Faza 6** — Opcijska AI sinteza
+Ena datoteka — [`/VERSION`](../VERSION) v korenu repozitorija — je edini vir resnice. Backend jo bere dinamično ob vsakem zagonu (`lib/version.py`), ni potreben noben ročni korak tukaj. (UI in extension imata svoj mehanizem — glej korenski README.)
+
+---
+
+## Sync med računalniki
+
+Mapa `storage\` vsebuje vse Loom podatke (state, embeddings, clusters, ingested). Kopiraj celo mapo na drug računalnik — brez potrebe po ponovnem backfillu ali embedanju.
+
+---
+
+## Dodajanje novega app vira
+
+1. Ustvari `adapters/novo_ime.py` ki razširja `BaseAdapter` (in `SQLiteAdapterMixin` če je vir SQLite baza)
+2. Implementiraj `fetch_all()`, `fetch_since()`, `fetch_one()`, `count_total()`
+3. Dodaj v `adapters/registry.py`
+4. Dodaj vnos v `config.docker.yaml`
+
+Obstoječi appi ostanejo nedotaknjeni — adapterji so izključno read-only.
+
+---
+
+## Odpravljanje težav
+
+**Status prikazuje napako za vir** — preveri da je datoteka v pravi podmapi `sources\`, in da ime ustreza glob patternu (npr. `dream_atlas_*.sqlite`)
+
+**Embedingi se ne generirajo** — če uporabljaš `huggingface_api` provider, preveri `HF_API_KEY` in internetno povezavo; pri `local` provider to ni relevantno
+
+**Container se ne zažene** — Docker Desktop mora teči, preveri da port 8000 ni zaseden
+
+---
+
+## Trenutno stanje
+
+Glej korenski [`/README.md`](../README.md) §"Trenutno stanje" za natančen, ažuren pregled kaj deluje in kaj so znane omejitve — ne podvajam tega tukaj, da se ne razideta.
