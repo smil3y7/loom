@@ -51,6 +51,7 @@ app.add_middleware(
 _config = None
 _dreams_cache = None
 _search_engine = None
+_clustering_engine = None
 
 def get_config():
     global _config
@@ -58,14 +59,30 @@ def get_config():
         _config = load_config("config.yaml")
     return _config
 
+def get_ingested_store():
+    """IngestedDreamStore — sanje prejete prek /api/ingest (glej lib/ingested_store.py)."""
+    from lib.ingested_store import IngestedDreamStore
+    config = get_config()
+    return IngestedDreamStore(os.path.join(config.storage_path, "ingested.db"))
+
 def get_dreams():
-    """Naloži sanje enkrat in cacheaj v memoryju."""
+    """
+    Naloži sanje enkrat in cacheaj v memoryju.
+
+    Union dveh virov: adapterji (SQLite/JSON datoteke na disku — Browser,
+    Atlas, Lab, Oneiro export) IN IngestedDreamStore (sanje prejete prek
+    POST /api/ingest, npr. iz Loom Sync extension v "api" delivery mode).
+    Brez tega bi bile sanje poslane prek /api/ingest nikoli vidne v
+    search/clusters/threads, ker adapterji ne vedo zanje.
+    """
     global _dreams_cache
     if _dreams_cache is not None:
         return _dreams_cache
     from adapters.registry import create_adapter
+    from lib.ingested_store import merge_dream_sources
     config = get_config()
-    dreams = {}
+
+    adapter_dreams = {}
     for source_name in config.enabled_sources():
         source_config = config.get_source_config(source_name)
         if not source_config:
@@ -74,11 +91,30 @@ def get_dreams():
             adapter = create_adapter(source_config)
             for dream in adapter.fetch_all():
                 if dream.is_valid():
-                    dreams[dream.dream_id] = dream
+                    adapter_dreams[dream.dream_id] = dream
         except Exception:
             pass  # Izpusti nedosegljive vire, ne crashaj
-    _dreams_cache = dreams
-    return dreams
+
+    ingested_dreams = {}
+    try:
+        for dream in get_ingested_store().get_all():
+            if dream.is_valid():
+                ingested_dreams[dream.dream_id] = dream
+    except Exception:
+        pass  # Ingested store še ne obstaja ali je prazen — ni fatalno
+
+    _dreams_cache = merge_dream_sources(adapter_dreams, ingested_dreams)
+    return _dreams_cache
+
+def invalidate_caches():
+    """
+    Počisti dreams/search/clustering cache — pokliči po tem ko pridejo nove
+    sanje (npr. po /api/ingest), sicer ostanejo nevidne do restarta strežnika.
+    """
+    global _dreams_cache, _search_engine, _clustering_engine
+    _dreams_cache = None
+    _search_engine = None
+    _clustering_engine = None
 
 def get_search_engine():
     """Zgradi search index enkrat in cacheaj."""
@@ -94,6 +130,25 @@ def get_search_engine():
     engine.build_index()
     _search_engine = engine
     return engine
+
+def get_clustering_engine():
+    """
+    ClusteringEngine enkrat zgrajen in cacheaj — prej je vseh 8 clustering
+    endpointov vsakič znova ustvarilo EmbeddingStore + ClusteringEngine,
+    neskladno s cache patternom uporabljenim za get_dreams()/get_search_engine().
+    ClusteringEngine sam po sebi ne cacheira SQL rezultatov (vsak get_clusters()/
+    get_threads() klic bere sveže iz clusters.db), zato cachiranje same instance
+    ne tvega zastarelih podatkov po confirm/reject/run() klicih.
+    """
+    global _clustering_engine
+    if _clustering_engine is not None:
+        return _clustering_engine
+    from lib.embeddings import EmbeddingStore
+    from lib.clustering import create_clustering_engine
+    config = get_config()
+    store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
+    _clustering_engine = create_clustering_engine(config, store)
+    return _clustering_engine
 
 
 # ── Pydantic modeli ───────────────────────────────────────────────────────────
@@ -260,10 +315,7 @@ async def api_status():
     # Clustering status
     cluster_status = {"clusters": 0, "threads": 0}
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        ce = create_clustering_engine(config, store)
+        ce = get_clustering_engine()
         cluster_status = ce.status()
     except Exception as e:
         cluster_status["error"] = str(e)
@@ -280,6 +332,15 @@ async def api_status():
     except Exception as e:
         sources_status["error"] = str(e)
 
+    # Ingested store — sanje prejete prek /api/ingest (npr. extension api mode)
+    try:
+        sources_status["ingested_api"] = {
+            "ok": True,
+            "count": get_ingested_store().count(),
+        }
+    except Exception as e:
+        sources_status["ingested_api"] = {"ok": False, "error": str(e)}
+
     return {
         "version": "0.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -295,22 +356,40 @@ async def api_status():
 async def api_ingest(request: IngestRequest, background_tasks: BackgroundTasks):
     """
     Sprejme canonical dream objekte iz source appov (Oneiro, extension).
-    Takoj vrne odgovor, embedding generacija gre v ozadje.
+    Shrani jih v IngestedDreamStore (trajno — prej se je vsebina zavrgla in
+    samo dream_id šel v embedding queue, kar je pomenilo da embedding step
+    ni nikoli našel dejanske vsebine za embedanje). Takoj vrne odgovor,
+    embedding generacija gre v ozadje.
     """
-    config = get_config()
+    from lib.schema import CanonicalDream
+
     accepted = 0
     rejected = 0
+    ingested_store = get_ingested_store()
 
     try:
         from lib.embeddings import EmbeddingStore
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
+        config = get_config()
+        embed_store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
 
         for dream_in in request.dreams:
             if not dream_in.dream_id or not dream_in.content.strip():
                 rejected += 1
                 continue
-            store.enqueue(dream_in.dream_id, dream_in.source_app)
+
+            dream = CanonicalDream.from_dict(dream_in.model_dump())
+            if not dream.is_valid():
+                rejected += 1
+                continue
+
+            ingested_store.save(dream)
+            embed_store.enqueue(dream.dream_id, dream.source_app)
             accepted += 1
+
+        if accepted > 0:
+            # Nove sanje morajo biti takoj vidne v get_dreams()/search —
+            # brez tega bi ostale nevidne do restarta strežnika.
+            invalidate_caches()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -454,11 +533,7 @@ async def api_clusters(
     config = get_config()
 
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         clusters = engine.get_clusters(
             confirmed_only=confirmed_only,
             min_size=min_size,
@@ -494,10 +569,7 @@ async def api_dream_clusters(dream_id: str):
     """Vrni cluster_id-je za dano sanje."""
     config = get_config()
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         cluster_ids = engine.get_clusters_for_dream(dream_id)
         return {"dream_id": dream_id, "cluster_ids": cluster_ids}
     except Exception as e:
@@ -509,10 +581,7 @@ async def api_confirm_cluster(cluster_id: str, request: ConfirmClusterRequest):
     """Uporabnik potrdi cluster."""
     config = get_config()
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         engine.confirm_cluster(cluster_id, request.confirmed_type, request.confirmed_name)
         return {"ok": True, "cluster_id": cluster_id}
     except Exception as e:
@@ -524,10 +593,7 @@ async def api_reject_cluster(cluster_id: str):
     """Uporabnik zavrne cluster."""
     config = get_config()
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         engine.reject_cluster(cluster_id)
         return {"ok": True, "cluster_id": cluster_id}
     except Exception as e:
@@ -541,10 +607,7 @@ async def api_threads(confirmed_only: bool = False):
     """Vrni vse candidate threads z vzorčnimi sanjami."""
     config = get_config()
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         threads = engine.get_threads(confirmed_only=confirmed_only)
 
         # Enrichaj z vzorčnimi sanjami
@@ -590,10 +653,7 @@ async def api_confirm_thread(thread_id: str, request: ConfirmThreadRequest):
     """Uporabnik potrdi thread."""
     config = get_config()
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         engine.confirm_thread(thread_id, request.name)
         return {"ok": True, "thread_id": thread_id, "name": request.name}
     except Exception as e:
@@ -605,10 +665,7 @@ async def api_reject_thread(thread_id: str):
     """Uporabnik zavrne thread."""
     config = get_config()
     try:
-        from lib.embeddings import EmbeddingStore
-        from lib.clustering import create_clustering_engine
-        store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
-        engine = create_clustering_engine(config, store)
+        engine = get_clustering_engine()
         engine.reject_thread(thread_id)
         return {"ok": True, "thread_id": thread_id}
     except Exception as e:

@@ -97,6 +97,39 @@ class CanonicalDream:
             and self.language
         )
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "CanonicalDream":
+        """Obratna operacija od to_dict() — rekonstruira CanonicalDream iz
+        shranjenega/prejetega dict-a (npr. iz IngestedDreamStore ali API POST body)."""
+        meta_data = data.get("metadata") or {}
+        metadata = DreamMetadata(
+            lucid=meta_data.get("lucid"),
+            sleep_quality=meta_data.get("sleep_quality"),
+            tags=meta_data.get("tags") or [],
+            emotions=meta_data.get("emotions") or [],
+            vividness=meta_data.get("vividness"),
+            emotional_tone=meta_data.get("emotional_tone"),
+            is_nightmare=meta_data.get("is_nightmare"),
+            is_recurring=meta_data.get("is_recurring"),
+            method=meta_data.get("method"),
+            stability_score=meta_data.get("stability_score"),
+            duration_estimate=meta_data.get("duration_estimate"),
+            extras=meta_data.get("extras") or {},
+        )
+        return cls(
+            dream_id=data["dream_id"],
+            source_app=data["source_app"],
+            timestamp=data["timestamp"],
+            content=data["content"],
+            language=data["language"],
+            title=data.get("title"),
+            parent_dream_id=data.get("parent_dream_id"),
+            cycle_index=data.get("cycle_index"),
+            metadata=metadata,
+            ingested_at=data.get("ingested_at"),
+            source_updated_at=data.get("source_updated_at"),
+        )
+
     def to_dict(self) -> dict:
         return {
             "dream_id": self.dream_id,

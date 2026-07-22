@@ -139,8 +139,7 @@ def action_status():
     print_footer()
 
     from lib.config import load_config
-    from adapters.registry import create_adapter
-    from lib.backfill import BackfillProcessor
+    from lib.backfill import get_source_status
 
     config = load_config("config.yaml")
     sources = config.enabled_sources()
@@ -152,25 +151,17 @@ def action_status():
 
     print(f"\n  {t('STATUS_CHECKING')}\n")
 
-    state_db = config.get("storage", "state_db",
-                           default=f"{config.storage_path}/state.db")
-
     for source_name in sources:
-        source_config = config.get_source_config(source_name)
         try:
-            adapter = create_adapter(source_config)
-            health = adapter.health_check()
+            result = get_source_status(config, source_name)
+            health = result["health"]
             icon = "✓" if health["ok"] else "✗"
             status_label = t("STATUS_ADAPTER_OK") if health["ok"] else t("STATUS_ADAPTER_FAIL")
             print(f"  {icon} {source_name:20s} {status_label}")
 
-            if health["ok"]:
-                processor = BackfillProcessor(adapter=adapter, state_db_path=state_db)
-                st = processor.status(source_name)
-                done = st["processed"]
-                total = st["total"]
-                left = st["remaining"]
-                pct = st["percent"]
+            if result["backfill"]:
+                st = result["backfill"]
+                done, total, left, pct = st["processed"], st["total"], st["remaining"], st["percent"]
                 print(f"    {'':20s} {done}/{total} ({pct}%) · {left} {t('STATUS_BACKFILL_LEFT')}")
 
                 if st["last_run"]:
@@ -200,33 +191,17 @@ def action_backfill():
     do_reset = confirm(t("BACKFILL_RESET_PROMPT"))
 
     from lib.config import load_config
-    from adapters.registry import create_adapter
-    from lib.backfill import BackfillProcessor
+    from lib.backfill import run_source_backfill
 
     config = load_config("config.yaml")
-    state_db = config.get("storage", "state_db",
-                           default=f"{config.storage_path}/state.db")
-    os.makedirs(os.path.dirname(state_db), exist_ok=True)
-
     sources = [source] if source != "__all__" else config.enabled_sources()
 
     print()
     for source_name in sources:
-        source_config = config.get_source_config(source_name)
         try:
-            adapter = create_adapter(source_config)
-            processor = BackfillProcessor(
-                adapter=adapter,
-                state_db_path=state_db,
-                on_dream=_noop_processor,
-            )
-            if do_reset:
-                processor.reset(source_name)
-
             print(f"\n  {t('BACKFILL_RUNNING')} {source_name}...")
-            progress = processor.run(
-                batch_size=config.backfill.get("batch_size", 50),
-                delay_ms=config.backfill.get("delay_ms", 100),
+            progress = run_source_backfill(
+                config, source_name, on_dream=_noop_processor, reset=do_reset,
             )
             show_ok(f"{t('BACKFILL_COMPLETE')}: {progress.processed} {t('STATUS_BACKFILL_DONE')}, "
                     f"{progress.skipped} {t('BACKFILL_SKIPPED')}, "

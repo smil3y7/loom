@@ -15,6 +15,7 @@ Key properties:
 Progress is tracked in a simple SQLite file (loom_state.db).
 """
 
+import os
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -306,3 +307,75 @@ class BackfillProcessor:
                 "status": last_run[2],
             } if last_run else None,
         }
+
+
+# ── Skupne funkcije za CLI vstopne točke ─────────────────────────────────────
+#
+# loom.py (argparse, cmd_status/cmd_backfill) in cli/menu.py (interaktivni
+# meni, action_status/action_backfill) sta prej vsak samostojno implementirala
+# isto logiko — adapter health check, backfill status branje, backfill run —
+# in se razlikovala samo v tem kako izpišeta rezultat. Ti dve funkciji sta
+# "čisti" (brez printanja) — klicna koda v loom.py/cli/menu.py naredi samo
+# formatiranje izpisa, ki je med njima namenoma različno (plain print z i18n
+# stringi vs. barvni interaktivni meni).
+
+def get_source_status(config, source_name: str) -> dict:
+    """
+    Vrne health_check + backfill status za en vir, brez printanja.
+
+    Returns:
+        {"source_name": str, "health": dict, "backfill": dict | None}
+        backfill je None če health['ok'] ni True (ni smiselno brati stanja
+        backfilla za vir do katerega se ne da dostopati).
+    """
+    from adapters.registry import create_adapter
+
+    state_db = config.get("storage", "state_db",
+                           default=f"{config.storage_path}/state.db")
+    source_config = config.get_source_config(source_name)
+    adapter = create_adapter(source_config)
+    health = adapter.health_check()
+
+    result = {"source_name": source_name, "health": health, "backfill": None}
+    if health["ok"]:
+        processor = BackfillProcessor(adapter=adapter, state_db_path=state_db)
+        result["backfill"] = processor.status(source_name)
+    return result
+
+
+def run_source_backfill(
+    config,
+    source_name: str,
+    on_dream=None,
+    reset: bool = False,
+) -> BackfillProgress:
+    """
+    Poženi backfill za en vir, brez printanja.
+
+    on_dream: enaka funkcija kot BackfillProcessor.run() pričakuje —
+        privzeto `lambda d: d.is_valid()` (ista logika kot je bila prej
+        podvojena kot _noop_processor v cli/menu.py in inline lambda v loom.py).
+    """
+    from adapters.registry import create_adapter
+
+    if on_dream is None:
+        on_dream = lambda d: d.is_valid()
+
+    state_db = config.get("storage", "state_db",
+                           default=f"{config.storage_path}/state.db")
+    os.makedirs(os.path.dirname(state_db), exist_ok=True)
+
+    source_config = config.get_source_config(source_name)
+    adapter = create_adapter(source_config)
+    processor = BackfillProcessor(
+        adapter=adapter,
+        state_db_path=state_db,
+        on_dream=on_dream,
+    )
+    if reset:
+        processor.reset(source_name)
+
+    return processor.run(
+        batch_size=config.backfill.get("batch_size", 50),
+        delay_ms=config.backfill.get("delay_ms", 100),
+    )

@@ -20,7 +20,7 @@ import sqlite3
 from typing import Iterator, Optional
 from datetime import datetime, timezone
 
-from adapters.base import BaseAdapter
+from adapters.base import BaseAdapter, SQLiteAdapterMixin
 from lib.schema import (
     CanonicalDream,
     DreamMetadata,
@@ -32,7 +32,7 @@ from lib.schema import (
 SOURCE_APP = "lab"
 
 
-class LucidLabAdapter(BaseAdapter):
+class LucidLabAdapter(BaseAdapter, SQLiteAdapterMixin):
 
     SOURCE_APP = SOURCE_APP
 
@@ -50,31 +50,8 @@ class LucidLabAdapter(BaseAdapter):
         self._conn: Optional[sqlite3.Connection] = None
         self._lookup_cache: Optional[dict] = None
 
-    # ------------------------------------------------------------------
-    # Connection management
-    # ------------------------------------------------------------------
-
-    def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA query_only = ON")
-        return conn
-
-    def _get_conn(self) -> sqlite3.Connection:
-        if self._conn is None:
-            self._conn = self._connect()
-        return self._conn
-
-    def close(self):
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.close()
+    # Connection management (_connect, _get_conn, close, __enter__, __exit__)
+    # je podedovano iz SQLiteAdapterMixin — glej adapters/base.py.
 
     # ------------------------------------------------------------------
     # Lookup value resolution

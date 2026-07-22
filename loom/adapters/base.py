@@ -9,7 +9,51 @@ They never generate embeddings, perform clustering, or own continuity logic.
 
 from abc import ABC, abstractmethod
 from typing import Iterator, Optional
+import sqlite3
 from lib.schema import CanonicalDream
+
+
+class SQLiteAdapterMixin:
+    """
+    Skupna connection-management logika za adapterje ki berejo SQLite baze
+    (BrowserAtlasAdapter, LucidLabAdapter). Prej je bila ta logika —
+    _connect, _get_conn, close, __enter__, __exit__ — dobesedno podvojena
+    (byte-for-byte identična) v obeh adapterjih.
+
+    Uporaba: podeduj skupaj z BaseAdapter, nastavi self.db_path in
+    self._conn = None v __init__, ostalo je podedovano.
+
+        class MyAdapter(BaseAdapter, SQLiteAdapterMixin):
+            def __init__(self, db_path: str):
+                self.db_path = db_path
+                self._conn: Optional[sqlite3.Connection] = None
+    """
+
+    db_path: str
+    _conn: Optional[sqlite3.Connection]
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        # Read-only pragma — belt and suspenders, adapterji nikoli ne pišejo
+        conn.execute("PRAGMA query_only = ON")
+        return conn
+
+    def _get_conn(self) -> sqlite3.Connection:
+        if self._conn is None:
+            self._conn = self._connect()
+        return self._conn
+
+    def close(self):
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
 
 class BaseAdapter(ABC):

@@ -30,8 +30,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 # ── Direktni ukazi (neinteraktivni) ──────────────────────────────────────────
 
 def cmd_status(config, args):
-    from adapters.registry import create_adapter
-    from lib.backfill import BackfillProcessor
+    from lib.backfill import get_source_status
     from cli.i18n import t, load
     load()
 
@@ -42,20 +41,15 @@ def cmd_status(config, args):
         print(f"  {t('STATUS_NO_SOURCES')}")
         return
 
-    state_db = config.get("storage", "state_db",
-                           default=f"{config.storage_path}/state.db")
-
     for source_name in sources:
-        source_config = config.get_source_config(source_name)
         try:
-            adapter = create_adapter(source_config)
-            health = adapter.health_check()
+            result = get_source_status(config, source_name)
+            health = result["health"]
             icon = "✓" if health["ok"] else "✗"
             print(f"  [{source_name}] {icon} {health['message']}")
 
-            if health["ok"]:
-                processor = BackfillProcessor(adapter=adapter, state_db_path=state_db)
-                st = processor.status(source_name)
+            if result["backfill"]:
+                st = result["backfill"]
                 print(f"           {st['processed']}/{st['total']} "
                       f"({st['percent']}%) · {st['remaining']} {t('STATUS_BACKFILL_LEFT')}")
                 if st["last_run"]:
@@ -67,31 +61,15 @@ def cmd_status(config, args):
 
 
 def cmd_backfill(config, args):
-    from adapters.registry import create_adapter
-    from lib.backfill import BackfillProcessor
+    from lib.backfill import run_source_backfill
     from cli.i18n import t, load
     load()
 
     sources = [args.source] if args.source else config.enabled_sources()
-    state_db = config.get("storage", "state_db",
-                           default=f"{config.storage_path}/state.db")
-    os.makedirs(os.path.dirname(state_db), exist_ok=True)
 
     for source_name in sources:
-        source_config = config.get_source_config(source_name)
         try:
-            adapter = create_adapter(source_config)
-            processor = BackfillProcessor(
-                adapter=adapter,
-                state_db_path=state_db,
-                on_dream=lambda d: d.is_valid(),
-            )
-            if args.reset:
-                processor.reset(source_name)
-            processor.run(
-                batch_size=config.backfill.get("batch_size", 50),
-                delay_ms=config.backfill.get("delay_ms", 100),
-            )
+            run_source_backfill(config, source_name, reset=args.reset)
         except Exception as e:
             print(f"[{source_name}] {t('ERROR_PREFIX')}: {e}")
             raise

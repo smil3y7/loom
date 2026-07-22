@@ -48,27 +48,48 @@ class SearchResult:
 
 class LocalSearchIndex:
     """
-    Hiter lokalni vector index brez zunanjih odvisnosti.
-    Cosine similarity v čistem Pythonu.
+    Hiter lokalni vector index brez zunanjih odvisnosti (numpy je edina
+    odvisnost, že prisoten prek lib/clustering.py — ni novega paketa).
+
+    Vektorizirana implementacija: ob build() se vsi embedingi enkrat
+    naložijo v eno L2-normalizirano numpy matriko. search() nato računa
+    podobnost z enim matričnim množenjem namesto s Python zanko čez vse
+    vektorje — pri 4000+ sanjah to je bistveno hitreje kot prejšnja čista
+    Python O(n) implementacija (seznam torok + zip/sum na klic).
 
     Za 8000 sanj z 384d vektorji:
       Memory: ~12MB
-      Search: ~50ms
+      Search: en (n, 384) @ (384,) matrični produkt namesto 8000 ločenih
+              Python for-zanko klicev _cosine_similarity()
 
     Faza 3 ga zamenja s Supabase pgvector.
     """
 
     def __init__(self):
-        self._vectors: dict[str, list[float]] = {}
+        self._dream_ids: list[str] = []
+        self._matrix = None  # np.ndarray (n, dim), L2-normalizirane vrstice
         self._built = False
 
     def build(self, store: EmbeddingStore) -> int:
-        """Naloži vse embedinge iz store v index."""
-        self._vectors = {}
+        """Naloži vse embedinge iz store v index in zgradi normalizirano matriko."""
+        import numpy as np
+
+        dream_ids = []
+        vectors = []
         for result in store.get_all():
-            self._vectors[result.dream_id] = result.embedding
+            dream_ids.append(result.dream_id)
+            vectors.append(result.embedding)
+
+        self._dream_ids = dream_ids
+        if vectors:
+            matrix = np.array(vectors, dtype=np.float64)
+            norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+            norms = np.where(norms == 0, 1, norms)  # izogni se deljenju z 0
+            self._matrix = matrix / norms
+        else:
+            self._matrix = np.zeros((0, 0))
         self._built = True
-        return len(self._vectors)
+        return len(self._dream_ids)
 
     def search(
         self,
@@ -77,17 +98,33 @@ class LocalSearchIndex:
         exclude_ids: list[str] = None,
     ) -> list[tuple[str, float]]:
         """Vrni top-k (dream_id, similarity) parov."""
-        if not self._built or not self._vectors:
+        import numpy as np
+
+        if not self._built or self._matrix is None or len(self._dream_ids) == 0:
             return []
 
+        q = np.array(query_vector, dtype=np.float64)
+        q_norm = np.linalg.norm(q)
+        if q_norm == 0:
+            return []
+        q = q / q_norm
+
+        # En matrični produkt namesto zanke — vrne cosine similarity
+        # za vse sanje hkrati, ker sta obe strani že L2-normalizirani.
+        similarities = self._matrix @ q
+
         exclude = set(exclude_ids or [])
-        scores = [
-            (dream_id, _cosine_similarity(query_vector, vector))
-            for dream_id, vector in self._vectors.items()
-            if dream_id not in exclude
-        ]
-        scores.sort(key=lambda x: x[1], reverse=True)
-        return scores[:limit]
+        # argsort padajoče, izloči exclude_ids, obreži na limit
+        order = np.argsort(-similarities)
+        results = []
+        for idx in order:
+            dream_id = self._dream_ids[idx]
+            if dream_id in exclude:
+                continue
+            results.append((dream_id, float(similarities[idx])))
+            if len(results) >= limit:
+                break
+        return results
 
     def find_similar(
         self,
@@ -95,15 +132,16 @@ class LocalSearchIndex:
         limit: int = 10,
     ) -> list[tuple[str, float]]:
         """Najdi podobne sanje brez klicanja API."""
-        vector = self._vectors.get(dream_id)
-        if not vector:
+        if dream_id not in self._dream_ids:
             return []
+        idx = self._dream_ids.index(dream_id)
+        vector = self._matrix[idx].tolist()
         return self.search(vector, limit=limit + 1,
                            exclude_ids=[dream_id])[:limit]
 
     @property
     def size(self) -> int:
-        return len(self._vectors)
+        return len(self._dream_ids)
 
     @property
     def is_built(self) -> bool:
