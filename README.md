@@ -1,12 +1,10 @@
 # Loom
 
-![Backend testi](https://github.com/USERNAME/REPO/actions/workflows/backend-tests.yml/badge.svg)
-![UI testi](https://github.com/USERNAME/REPO/actions/workflows/ui-tests.yml/badge.svg)
-![Extension](https://github.com/USERNAME/REPO/actions/workflows/extension-check.yml/badge.svg)
+![Backend testi](https://github.com/smil3y7/loom/actions/workflows/backend-tests.yml/badge.svg)
+![UI testi](https://github.com/smil3y7/loom-ui/actions/workflows/ui-tests.yml/badge.svg)
+![Extension](https://github.com/smil3y7/loom-extension/actions/workflows/extension-check.yml/badge.svg)
 
 Semantična kontinuitetna plast za sanjski dnevnik. Del ekosistema **Sentria**.
-
-> Zamenjaj `USERNAME/REPO` zgoraj z dejansko potjo repozitorija, da lučke prikažejo pravi status.
 
 ---
 
