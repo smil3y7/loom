@@ -46,9 +46,13 @@ Nato v `chrome://extensions` klikni **reload** na Loom Sync.
 
 ## Tehnične podrobnosti
 
-- Extension bere IndexedDB **samo ko je Oneiro odprt** v brskalniku
-- Nobeni podatki ne gredo skozi strežnik v download načinu
-- Extension nikoli ne piše v Oneiro — samo bere
+- Extension **ne bere več IndexedDB neposredno**. Oneiro zdaj podpira šifriranje vsebine at-rest (PIN/geslo) — ko je nastavljeno, so zapisi v IndexedDB vedno šifrirani, ne glede na to, ali je uporabnik trenutno odklenjen (ključ živi samo v pomnilniku odprte Oneiro strani). Neposredno branje bi zato vedno vrnilo 0 uporabnih sanj.
+- Namesto tega extension prosi Oneiro stran samo prek `postMessage` mostu (`docs/loom-sync-protocol.md` v Oneiro repozitoriju) — Oneiro (ker je odprt in odklenjen) odgovori z že dešifrirano vsebino. Extension nikoli ne vidi šifriranega bloka niti ključa.
+- **Zahteva Oneiro različico z nameščenim mostom** (`src/bridge/loomSyncBridge.js`). Če je Oneiro tab star (brez tega popravka), sync po 5 sekundah javi "Oneiro ni odgovoril".
+- Če je Oneiro zaklenjen (PIN ni vnešen), sync javi jasno napako namesto tihega "0 sanj".
+- Extension bere podatke **samo ko je Oneiro odprt** v brskalniku (nespremenjeno).
+- Nobeni podatki ne gredo skozi strežnik v download načinu.
+- Extension nikoli ne piše v Oneiro — samo bere.
 
 ---
 

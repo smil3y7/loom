@@ -250,6 +250,18 @@ class ClusteringEngine:
 
         # Naloži vse embedinge
         all_embeddings = list(self.store.get_all())
+
+        # Dedup — sanje ki predstavljajo isto izvorno sanjo v več variantah
+        # (Oneiro interpretacije, glej lib/dedup.py) naj se v clusteringu
+        # pojavijo samo enkrat. Brez tega bi skoraj identični vektorji (isti
+        # content, različna samo extras.oneiro_interpretation) HDBSCAN
+        # zavedli v lažen "vzorec" — grupiranje iste sanje s sabo, ne
+        # dejanske podobnosti med različnimi sanjami.
+        if dreams_by_id:
+            from lib.dedup import compute_representative_ids
+            representative_ids = compute_representative_ids(dreams_by_id)
+            all_embeddings = [e for e in all_embeddings if e.dream_id in representative_ids]
+
         if len(all_embeddings) < self.min_cluster_size:
             return {"clusters": 0, "noise": len(all_embeddings), "threads": 0,
                     "message": f"Premalo embedingov ({len(all_embeddings)}). "

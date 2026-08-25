@@ -70,13 +70,28 @@ class LocalSearchIndex:
         self._matrix = None  # np.ndarray (n, dim), L2-normalizirane vrstice
         self._built = False
 
-    def build(self, store: EmbeddingStore) -> int:
-        """Naloži vse embedinge iz store v index in zgradi normalizirano matriko."""
+    def build(self, store: EmbeddingStore, dreams_by_id: dict = None) -> int:
+        """
+        Naloži vse embedinge iz store v index in zgradi normalizirano matriko.
+
+        dreams_by_id: če je podan, se uporabi za deduplikacijo — sanje ki
+        predstavljajo isto izvorno sanjo v več variantah (Oneiro
+        interpretacije, glej lib/dedup.py) se v indeksu pojavijo samo
+        enkrat namesto enkrat na varianto. Brez tega parametra deluje
+        kot prej (brez dedup — vsi embedingi v store se indeksirajo).
+        """
         import numpy as np
+
+        representative_ids = None
+        if dreams_by_id:
+            from lib.dedup import compute_representative_ids
+            representative_ids = compute_representative_ids(dreams_by_id)
 
         dream_ids = []
         vectors = []
         for result in store.get_all():
+            if representative_ids is not None and result.dream_id not in representative_ids:
+                continue
             dream_ids.append(result.dream_id)
             vectors.append(result.embedding)
 
@@ -175,8 +190,8 @@ class SearchEngine:
         self._indexed = False
 
     def build_index(self) -> int:
-        """Zgradi search index iz obstoječih embedingov."""
-        count = self.index.build(self.store)
+        """Zgradi search index iz obstoječih embedingov (deduplicirano — glej lib/dedup.py)."""
+        count = self.index.build(self.store, self.dreams_by_id)
         self._indexed = True
         print(f"[Search] Index zgrajen: {count} sanj")
         return count

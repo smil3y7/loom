@@ -1,0 +1,101 @@
+{
+  "extName": {
+    "message": "Loom Sync"
+  },
+  "extDescription": {
+    "message": "Sinhroniziraj Oneiro sanje z Loom continuity engine"
+  },
+  "subtitleDefault": {
+    "message": "Oneiro → Loom"
+  },
+  "subtitleWrongPage": {
+    "message": "Oneiro ni odprt"
+  },
+  "wrongPageBody": {
+    "message": "Odpri $ONEIRO_LINK$ v tem tabu, nato klikni ikono znova.",
+    "placeholders": {
+      "oneiro_link": { "content": "$1" }
+    }
+  },
+  "wrongPageLinkText": {
+    "message": "Oneiro"
+  },
+  "statusDetected": {
+    "message": "Oneiro zaznan"
+  },
+  "btnSync": {
+    "message": "Sync z Loom"
+  },
+  "btnSyncNew": {
+    "message": "Samo nove sanje"
+  },
+  "btnSyncAgain": {
+    "message": "Sync znova"
+  },
+  "btnTryAgain": {
+    "message": "Poskusi znova"
+  },
+  "workingReading": {
+    "message": "Berem sanje iz Oneire..."
+  },
+  "doneExported": {
+    "message": "$COUNT$ sanj izvoženih — premakni v Loom/sources/oneiro/",
+    "placeholders": {
+      "count": { "content": "$1" }
+    }
+  },
+  "doneExportedDetailed": {
+    "message": "$DREAMCOUNT$ sanj izvoženih kot $COUNT$ zapisov (nekatere sanje imajo več interpretacij) — premakni v Loom/sources/oneiro/",
+    "placeholders": {
+      "dreamcount": { "content": "$1" },
+      "count": { "content": "$2" }
+    }
+  },
+  "metaLastSync": {
+    "message": "Zadnji sync: $DATE$ · $COUNT$ sanj",
+    "placeholders": {
+      "date": { "content": "$1" },
+      "count": { "content": "$2" }
+    }
+  },
+  "errTabNotFound": {
+    "message": "Oneiro tab ni najden. Odpri Oneiro in poskusi znova."
+  },
+  "errInjection": {
+    "message": "Napaka pri injekciji v Oneiro tab: $ERROR$",
+    "placeholders": {
+      "error": { "content": "$1" }
+    }
+  },
+  "errNoResponse": {
+    "message": "Oneiro ni odgovoril. Preveri, da je stran do konca naložena, in poskusi znova."
+  },
+  "errLocked": {
+    "message": "Oneiro je zaklenjen. Odkleni s PIN kodo in poskusi znova."
+  },
+  "errUnknown": {
+    "message": "Oneiro je vrnil napako."
+  },
+  "errApiFailed": {
+    "message": "API napaka $STATUS$: $TEXT$",
+    "placeholders": {
+      "status": { "content": "$1" },
+      "text": { "content": "$2" }
+    }
+  },
+  "errGeneric": {
+    "message": "Napaka: $MESSAGE$",
+    "placeholders": {
+      "message": { "content": "$1" }
+    }
+  },
+  "errUnknownError": {
+    "message": "Neznana napaka"
+  },
+  "errExportFailed": {
+    "message": "Napaka pri izvozu: $MESSAGE$",
+    "placeholders": {
+      "message": { "content": "$1" }
+    }
+  }
+}

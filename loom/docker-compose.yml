@@ -20,11 +20,22 @@ services:
 
       - ./config.docker.yaml:/loom/config.yaml:ro
 
+      # Verzija — bere se iz korena repozitorija (sibling mapa od loom/),
+      # bind-mount ker Docker build context vidi samo loom/ mapo samo.
+      # Če ta pot pri tebi ne obstaja (npr. loom/ ni del git checkouta
+      # celotnega monorepo-ja), nastavi LOOM_VERSION env spremenljivko
+      # spodaj namesto tega — lib/version.py jo prebere kot prioriteto.
+      - ../VERSION:/loom/VERSION:ro
+
     environment:
       # Hugging Face API token
       # Dobil na: huggingface.co → Settings → Access Tokens → New token (Read)
       # ZAMENJAJ hf_xxxx z dejanskim tokenom
       - HF_API_KEY=hf_xxxx
+
+      # Opcijski override če zgornji VERSION bind mount ne deluje pri tebi
+      # (npr. odkomentiraj in nastavi ročno):
+      # - LOOM_VERSION=0.1.0
 
     ports:
       - "8000:8000"

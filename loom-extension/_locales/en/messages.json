@@ -1,0 +1,101 @@
+{
+  "extName": {
+    "message": "Loom Sync"
+  },
+  "extDescription": {
+    "message": "Sync Oneiro dreams to Loom continuity engine"
+  },
+  "subtitleDefault": {
+    "message": "Oneiro → Loom"
+  },
+  "subtitleWrongPage": {
+    "message": "Oneiro not open"
+  },
+  "wrongPageBody": {
+    "message": "Open $ONEIRO_LINK$ in this tab, then click the icon again.",
+    "placeholders": {
+      "oneiro_link": { "content": "$1" }
+    }
+  },
+  "wrongPageLinkText": {
+    "message": "Oneiro"
+  },
+  "statusDetected": {
+    "message": "Oneiro detected"
+  },
+  "btnSync": {
+    "message": "Sync with Loom"
+  },
+  "btnSyncNew": {
+    "message": "New dreams only"
+  },
+  "btnSyncAgain": {
+    "message": "Sync again"
+  },
+  "btnTryAgain": {
+    "message": "Try again"
+  },
+  "workingReading": {
+    "message": "Reading dreams from Oneiro..."
+  },
+  "doneExported": {
+    "message": "$COUNT$ dreams exported — move to Loom/sources/oneiro/",
+    "placeholders": {
+      "count": { "content": "$1" }
+    }
+  },
+  "doneExportedDetailed": {
+    "message": "$DREAMCOUNT$ dreams exported as $COUNT$ records (some dreams have multiple interpretations) — move to Loom/sources/oneiro/",
+    "placeholders": {
+      "dreamcount": { "content": "$1" },
+      "count": { "content": "$2" }
+    }
+  },
+  "metaLastSync": {
+    "message": "Last sync: $DATE$ · $COUNT$ dreams",
+    "placeholders": {
+      "date": { "content": "$1" },
+      "count": { "content": "$2" }
+    }
+  },
+  "errTabNotFound": {
+    "message": "Oneiro tab not found. Open Oneiro and try again."
+  },
+  "errInjection": {
+    "message": "Error injecting into Oneiro tab: $ERROR$",
+    "placeholders": {
+      "error": { "content": "$1" }
+    }
+  },
+  "errNoResponse": {
+    "message": "Oneiro did not respond. Check that the page is fully loaded, and try again."
+  },
+  "errLocked": {
+    "message": "Oneiro is locked. Unlock with your PIN and try again."
+  },
+  "errUnknown": {
+    "message": "Oneiro returned an error."
+  },
+  "errApiFailed": {
+    "message": "API error $STATUS$: $TEXT$",
+    "placeholders": {
+      "status": { "content": "$1" },
+      "text": { "content": "$2" }
+    }
+  },
+  "errGeneric": {
+    "message": "Error: $MESSAGE$",
+    "placeholders": {
+      "message": { "content": "$1" }
+    }
+  },
+  "errUnknownError": {
+    "message": "Unknown error"
+  },
+  "errExportFailed": {
+    "message": "Export error: $MESSAGE$",
+    "placeholders": {
+      "message": { "content": "$1" }
+    }
+  }
+}
