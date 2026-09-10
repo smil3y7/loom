@@ -493,6 +493,57 @@ async def api_search(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Sleep cycles (multi-cycle nights) ───────────────────────────────────────────
+
+@app.get("/api/dreams/{dream_id}/cycles")
+async def api_dream_cycles(dream_id: str):
+    """
+    Vrni vse spalne cikle iste noči kot dana sanja (isti parent_dream_id),
+    urejene po cycle_index.
+
+    Browser Atlas in Lab adapter oba populirata parent_dream_id/cycle_index
+    (glej lib/schema.py make_parent_id) — ena noč lahko ima več ločenih
+    SleepCycle zapisov (zbudil se, spet zaspal, nova sanja). Oneiro nima
+    nočnega grupiranja (parent_dream_id vedno None) — v tem primeru vrnemo
+    samo dano sanjo samo, da UI lahko ta endpoint kliče brezpogojno, brez
+    posebne veje za "sanja nima ciklov" primer.
+    """
+    dreams = get_dreams()
+    dream = dreams.get(dream_id)
+    if not dream:
+        raise HTTPException(status_code=404, detail="Dream not found")
+
+    if not dream.parent_dream_id:
+        cycles = [dream]
+    else:
+        cycles = [d for d in dreams.values() if d.parent_dream_id == dream.parent_dream_id]
+        # Sort po cycle_index — None (ne bi smel obstajati poleg parent_dream_id,
+        # ampak varno pade na konec namesto da crasha na primerjavi None < int)
+        cycles.sort(key=lambda d: (
+            d.cycle_index if d.cycle_index is not None else 999999,
+            d.timestamp or "",
+        ))
+
+    return {
+        "dream_id": dream_id,
+        "parent_dream_id": dream.parent_dream_id,
+        "total_cycles": len(cycles),
+        "cycles": [
+            {
+                "dream_id": d.dream_id,
+                "cycle_index": d.cycle_index,
+                "source_app": d.source_app,
+                "timestamp": d.timestamp,
+                "title": d.title,
+                "full_content": d.content,
+                "language": d.language,
+                "metadata": d.to_dict()["metadata"],
+            }
+            for d in cycles
+        ],
+    }
+
+
 # ── Similar dreams ────────────────────────────────────────────────────────────
 
 @app.get("/api/dreams/{dream_id}/similar")

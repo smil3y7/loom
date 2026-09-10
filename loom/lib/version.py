@@ -24,20 +24,25 @@
 
 import os
 
-_VERSION_CACHE = None
-
 
 def get_version() -> str:
-    """Vrne trenutno verzijo. Cacheirano po prvem branju znotraj procesa."""
-    global _VERSION_CACHE
-    if _VERSION_CACHE is not None:
-        return _VERSION_CACHE
+    """Vrne trenutno verzijo, sveže prebrano iz /VERSION ob vsakem klicu.
 
+    NAMERNO BREZ CACHEA: prejšnja implementacija je verzijo cacheirala v
+    modulni globalni spremenljivki po prvem branju znotraj procesa — kar je
+    neposredno nasprotovalo lastnemu docstringu/komentarju ("bere dinamično
+    ob vsakem klicu"). Posledica: če se /VERSION posodobi (npr. extension
+    version sync commit), dolgo živeč backend proces (Docker container,
+    Tauri sidecar) je še naprej vračal STARO verzijo dokler ni bil ročno
+    restartan — kar se je v praksi pokazalo kot UI/Engine version mismatch
+    v Nastavitvah, čeprav je /VERSION na disku že imel pravilno vrednost.
+    Branje datoteke je poceni (nekaj bajtov), zato cache ni bil potreben za
+    performance — samo za slabšo konsistentnost.
+    """
     # 1. Eksplicitni override — uporabno za edge-case deploye ali debug
     env_version = os.environ.get("LOOM_VERSION")
     if env_version:
-        _VERSION_CACHE = env_version.strip()
-        return _VERSION_CACHE
+        return env_version.strip()
 
     here = os.path.dirname(os.path.abspath(__file__))
     candidates = [
@@ -48,12 +53,10 @@ def get_version() -> str:
     for path in candidates:
         try:
             with open(path) as f:
-                _VERSION_CACHE = f.read().strip()
-                return _VERSION_CACHE
+                return f.read().strip()
         except FileNotFoundError:
             continue
 
     # Nobena kandidatna pot ni obstajala — ne crashaj zato samo ker se
     # verzija ne izpiše pravilno, samo označi da je neznana.
-    _VERSION_CACHE = "0.0.0-unknown"
-    return _VERSION_CACHE
+    return "0.0.0-unknown"

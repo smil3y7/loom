@@ -65,6 +65,10 @@ export const api = {
   similar: (dreamId, limit = 8) =>
     request(`/api/dreams/${dreamId}/similar?limit=${limit}`),
 
+  // Sleep cycles (multi-cycle night grouping)
+  cycles: (dreamId) =>
+    request(`/api/dreams/${dreamId}/cycles`),
+
   // Clusters
   clusters: ({ minSize = 2, confirmedOnly = false, candidateType } = {}) => {
     const params = new URLSearchParams({ min_size: minSize, confirmed_only: confirmedOnly })

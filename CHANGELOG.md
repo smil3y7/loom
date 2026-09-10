@@ -8,6 +8,25 @@ Format sledi [Keep a Changelog](https://keepachangelog.com/), verzije [Semantic 
 
 ---
 
+## [0.3.0] — 2026-09-10
+
+### Added
+- `GET /api/dreams/{dream_id}/cycles` (`loom/api/index.py`) — vrne vse spalne cikle iste noči (isti `parent_dream_id`, urejeno po `cycle_index`); sanje brez nočnega grupiranja (Oneiro) vrne kot edini cikel, da UI lahko endpoint kliče brezpogojno
+- `FullTextModal.jsx` prikaže cycle-switcher (zavihki "Cikel N od M"), kadar sanja pripada večciklni noči — prej je modal vedno prikazal samo en cikel, ostali cikli iste noči so bili nevidni/nepovezani
+- `components/ConfirmRejectWorkflow.jsx` — deljena potrdi/zavrni/preimenuj komponenta; uporabljata jo `Clusters.jsx` in `Patterns.jsx`
+- Clusters stran zdaj dejansko omogoča potrditev/zavrnitev/preimenovanje (backend endpointi in `api.js` klienti so obstajali že prej, ampak `Clusters.jsx` jih nikoli ni klical — stran je bila samo read-only prikaz)
+- Testi: `loom/tests/test_api_cycles.py` (4), `loom/tests/test_version.py` +1 regresijski, `loom-ui/src/components/__tests__/FullTextModal.test.jsx` (3), `loom-ui/src/components/__tests__/ConfirmRejectWorkflow.test.jsx` (4)
+
+### Fixed
+- **`lib/version.py` je cacheiral verzijo za celotno življenjsko dobo procesa**, kar je nasprotovalo lastnemu komentarju ("bere dinamično ob vsakem klicu") — posledica: po bumpu `/VERSION` je dolgo živeč backend proces še naprej vračal staro verzijo dokler ni bil ročno restartan, kar se je pokazalo kot UI/Engine version mismatch v Nastavitvah. Cache odstranjen, dodan regresijski test ki dokazano pade na stari kodi.
+
+### Changed
+- `Patterns.jsx` prepisan na `ConfirmRejectWorkflow` — odstranjena podvojena dialog logika; mimogrede popravljen `alert()` anti-pattern (napaka iz confirm/reject klica se je prej pokazala kot browser popup in dialog se je zaprl skupaj z izgubljenim rename vnosom; zdaj napaka ostane v dialogu, dialog ostane odprt, vnos se ohrani)
+- `clusters.about` i18n besedilo prepisano — prej generičen enostavčni opis, zdaj razloži razmerje cluster↔thread (cluster je širša surova množica, thread prečiščena podmnožica ki se ponavlja) in kaj potrditev/zavrnitev dejansko naredi (persistentno čez re-clustering rune, sanje se ne izbrišejo)
+- `candidate_type` na Clusters strani prikazan preveden (`clusters.candidateType.*`), prej surov string ("thread"/"location"/...)
+
+---
+
 ## [0.1.0] — 2026-07-22
 
 ### Added

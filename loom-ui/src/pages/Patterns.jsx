@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useI18n } from '../i18n/index.jsx'
 import { api, apiErrorMessage } from '../lib/api.js'
 import FullTextModal from '../components/FullTextModal.jsx'
+import ConfirmRejectWorkflow from '../components/ConfirmRejectWorkflow.jsx'
 
 // ── Časovna premica ───────────────────────────────────────────────────────────
 
@@ -42,7 +43,9 @@ function Timeline({ data }) {
 
 // ── Thread kartica ────────────────────────────────────────────────────────────
 
-function ThreadCard({ thread, t, onConfirm, onReject }) {
+const GENERIC_NAME_RE = /^(Vzorec|Pattern)\s+\d+/i
+
+function ThreadCard({ thread, t, onChanged }) {
   const [expanded, setExpanded] = useState(false)
   const [modal, setModal] = useState(null)
 
@@ -59,7 +62,7 @@ function ThreadCard({ thread, t, onConfirm, onReject }) {
   // - Potrjeni: thread.name (kar je user vpisal)
   // - Nepotrjeni z generičnim imenom: naslovi prvih 3 vzorčnih sanj
   // - Nepotrjeni z lastnim imenom: thread.name
-  const isGeneric = /^(Vzorec|Pattern)\s+\d+/i.test(thread.name)
+  const isGeneric = GENERIC_NAME_RE.test(thread.name)
   const sampleTitles = samples.slice(0, 3).map(s => s.title).filter(Boolean)
 
   let displayName, subLabel
@@ -76,6 +79,12 @@ function ThreadCard({ thread, t, onConfirm, onReject }) {
 
   const previewSamples = samples.slice(0, 5)
   const moreSamples = samples.slice(5)
+
+  // Predlagano ime za confirm dialog — enaka logika kot za displayName,
+  // samo brez pogoja na thread.confirmed (dialog se odpre samo za nepotrjene).
+  const suggestedName = isGeneric && sampleTitles.slice(0, 2).length > 0
+    ? sampleTitles.slice(0, 2).join(' / ')
+    : thread.name
 
   return (
     <div className={`thread-card ${thread.confirmed ? 'confirmed' : ''}`}>
@@ -163,17 +172,39 @@ function ThreadCard({ thread, t, onConfirm, onReject }) {
         </div>
       )}
 
-      {/* Akcije */}
-      {!thread.confirmed && !thread.rejected && (
-        <div className="thread-actions">
-          <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={onConfirm}>
-            {t('patterns.confirm')}
-          </button>
-          <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={onReject}>
-            {t('patterns.reject')}
-          </button>
-        </div>
-      )}
+      {/* Potrdi/zavrni — deljena komponenta, isti backend pattern kot Clusters */}
+      <ConfirmRejectWorkflow
+        confirmed={thread.confirmed}
+        rejected={thread.rejected}
+        suggestedName={suggestedName}
+        labels={{
+          confirmButton: t('patterns.confirm'),
+          rejectButton: t('patterns.reject'),
+          renameLabel: t('patterns.rename'),
+          rejectedNotice: `${t('patterns.rejected')} — ${thread.name}`,
+        }}
+        summary={
+          <>
+            <p style={{ marginBottom: 8, fontSize: 14, color: 'var(--text-2)' }}>
+              {thread.dream_ids?.length} {t('patterns.dreams')} ·{' '}
+              {thread.first_seen} → {thread.last_seen}
+            </p>
+            {samples.slice(0, 3).map((s, i) => (
+              <div key={i} style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 3 }}>
+                · {s.date} — {s.title || t('common.no_title')}
+              </div>
+            ))}
+          </>
+        }
+        onConfirm={async (name) => {
+          await api.confirmThread(thread.thread_id, name || thread.name)
+          await onChanged()
+        }}
+        onReject={async () => {
+          await api.rejectThread(thread.thread_id)
+          await onChanged()
+        }}
+      />
 
       {/* Full text modal */}
       {modal && <FullTextModal dream={modal} onClose={() => setModal(null)} />}
@@ -188,8 +219,6 @@ export default function Patterns() {
   const [threads, setThreads] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [dialog, setDialog] = useState(null)
-  const [confirmName, setConfirmName] = useState('')
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('score')
 
@@ -206,24 +235,6 @@ export default function Patterns() {
     } finally {
       setLoading(false)
     }
-  }
-
-  async function handleConfirm() {
-    if (!dialog?.thread) return
-    try {
-      await api.confirmThread(dialog.thread.thread_id, confirmName || dialog.thread.name)
-      setDialog(null)
-      load()
-    } catch (e) { alert(e.message) }
-  }
-
-  async function handleReject() {
-    if (!dialog?.thread) return
-    try {
-      await api.rejectThread(dialog.thread.thread_id)
-      setDialog(null)
-      load()
-    } catch (e) { alert(e.message) }
   }
 
   const filtered = threads.filter(th => {
@@ -301,76 +312,9 @@ export default function Patterns() {
               key={thread.thread_id}
               thread={thread}
               t={t}
-              onConfirm={() => {
-                // Predlagano ime za dialog: naslovi sanj ali thread.name
-                const isGeneric = /^(Vzorec|Pattern)\s+\d+/i.test(thread.name)
-                const titles = (thread.sample_dreams || []).slice(0, 2).map(s => s.title).filter(Boolean)
-                setConfirmName(
-                  thread.confirmed ? thread.name :
-                  (isGeneric && titles.length > 0 ? titles.join(' / ') : thread.name)
-                )
-                setDialog({ type: 'confirm', thread })
-              }}
-              onReject={() => setDialog({ type: 'reject', thread })}
+              onChanged={load}
             />
           ))}
-        </div>
-      )}
-
-      {/* Confirm dialog */}
-      {dialog?.type === 'confirm' && (
-        <div className="dialog-overlay" onClick={() => setDialog(null)}>
-          <div className="dialog" onClick={e => e.stopPropagation()}>
-            <h3>{t('patterns.confirm')}</h3>
-            <p style={{ marginBottom: 8, fontSize: 14, color: 'var(--text-2)' }}>
-              {dialog.thread.dream_ids?.length} {t('patterns.dreams')} ·{' '}
-              {dialog.thread.first_seen} → {dialog.thread.last_seen}
-            </p>
-            {(dialog.thread.sample_dreams || []).slice(0, 3).map((s, i) => (
-              <div key={i} style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 3 }}>
-                · {s.date} — {s.title || t('common.no_title')}
-              </div>
-            ))}
-            <div style={{ marginTop: 16, marginBottom: 20 }}>
-              <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 8 }}>
-                {t('patterns.rename')}
-              </label>
-              <input
-                className="input"
-                value={confirmName}
-                onChange={e => setConfirmName(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="dialog-actions">
-              <button className="btn btn-secondary" onClick={() => setDialog(null)}>
-                {t('common.cancel')}
-              </button>
-              <button className="btn btn-primary" onClick={handleConfirm}>
-                {t('common.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reject dialog */}
-      {dialog?.type === 'reject' && (
-        <div className="dialog-overlay" onClick={() => setDialog(null)}>
-          <div className="dialog" onClick={e => e.stopPropagation()}>
-            <h3>{t('patterns.reject')}</h3>
-            <p style={{ marginBottom: 20 }}>
-              {t('patterns.rejected')} — {dialog.thread.name}
-            </p>
-            <div className="dialog-actions">
-              <button className="btn btn-secondary" onClick={() => setDialog(null)}>
-                {t('common.cancel')}
-              </button>
-              <button className="btn btn-danger" onClick={handleReject}>
-                {t('patterns.reject')}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

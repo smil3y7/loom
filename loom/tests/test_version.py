@@ -135,6 +135,49 @@ def test_local_checkout_style_path_resolves_two_levels_up():
         shutil.rmtree(tmp)
 
 
+def test_reads_fresh_on_every_call_no_stale_process_cache():
+    """
+    KLJUČNI REGRESIJSKI TEST — get_version() ne sme cacheirati vrednosti za
+    življenjsko dobo procesa. Prejšnja implementacija je cacheirala v modulni
+    globalni spremenljivki po prvem klicu — v dolgo živečem procesu (Docker
+    container, Tauri sidecar) je to pomenilo, da posodobitev /VERSION filea
+    ni bila vidna dokler proces ni bil ročno restartan (potrjeno v praksi kot
+    UI/Engine version mismatch v Nastavitvah).
+    """
+    tmp = tempfile.mkdtemp()
+    try:
+        lib_dir = os.path.join(tmp, "repo", "loom", "lib")
+        os.makedirs(lib_dir)
+        src = os.path.join(os.path.dirname(__file__), "..", "lib", "version.py")
+        shutil.copy(src, os.path.join(lib_dir, "version.py"))
+
+        version_path = os.path.join(tmp, "repo", "VERSION")
+        with open(version_path, "w") as f:
+            f.write("1.0.0-before\n")
+
+        proc = subprocess.run(
+            [
+                sys.executable, "-c",
+                "from version import get_version\n"
+                "print(get_version())\n"
+                "with open(r'" + version_path + "', 'w') as f:\n"
+                "    f.write('2.0.0-after\\n')\n"
+                "print(get_version())\n"
+            ],
+            cwd=lib_dir,
+            env={k: v for k, v in os.environ.items() if k != "LOOM_VERSION"},
+            capture_output=True, text=True,
+        )
+        first, second = proc.stdout.strip().split("\n")
+        assert first == "1.0.0-before", proc.stderr
+        assert second == "2.0.0-after", (
+            f"Druga vrednost bi morala odražati posodobljen VERSION file "
+            f"znotraj ISTEGA procesa, ne stale cache. stdout={proc.stdout!r} stderr={proc.stderr!r}"
+        )
+    finally:
+        shutil.rmtree(tmp)
+
+
 def test_missing_version_file_falls_back_gracefully():
     """Če nobena kandidatna pot ne obstaja in ni env var, mora vrniti
     fallback namesto crashat."""
