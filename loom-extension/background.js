@@ -15,18 +15,33 @@ const ONEIRO_URL = "https://oneiro-delta.vercel.app";
 const SOURCE_APP = "oneiro";
 const CCP_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
-const DELIVERY_MODE = "download"; // "download" | "api"
-const LOOM_API_URL = "http://localhost:8000/api/ingest";
-
 const BRIDGE_TIMEOUT_MS = 5000;
+
+// PREJ: DELIVERY_MODE in LOOM_API_URL sta bila hardcoded konstanti — vsak
+// preklop med download/api ali sprememba porta je zahteval urejanje kode +
+// nov build. Zdaj se bere iz chrome.storage.local (nastavljivo prek
+// popup.js settings zaslona), z varnimi privzetimi vrednostmi za obstoječe
+// namestitve, ki settings še niso shranile.
+const DEFAULT_SETTINGS = {
+  deliveryMode: "download", // "download" | "api"
+  apiUrl: "http://localhost:8000/api/ingest",
+  apiToken: "",
+};
+
+async function getSettings() {
+  const { settings } = await chrome.storage.local.get("settings");
+  return { ...DEFAULT_SETTINGS, ...(settings || {}) };
+}
 
 // ── Message handler ───────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "sync") {
     console.log("[Loom][bg] sync sprožen, sinceTimestamp:", message.sinceTimestamp, "tabId:", message.tabId);
-    readFromOneiroTab(message.sinceTimestamp, message.tabId)
-      .then(({ dreams, interpretations }) => {
+    (async () => {
+      try {
+        const settings = await getSettings();
+        const { dreams, interpretations } = await readFromOneiroTab(message.sinceTimestamp, message.tabId);
         console.log("[Loom][bg] prejeto od Oneira:", dreams.length, "sanj,", interpretations.length, "interpretacij");
         const canonical = mapAllToCanonical(dreams, interpretations);
         // count = število canonical ZAPISOV (lahko več na sanjo, eden na
@@ -34,17 +49,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Prej se je v UI prikazoval samo count kot "N sanj izvoženih", kar
         // je zavajajoče kadar imajo sanje interpretacije (count > dreamCount).
         const dreamCount = dreams.length;
-        if (DELIVERY_MODE === "api") {
-          return postToApi(canonical)
-            .then(() => sendResponse({ ok: true, count: canonical.length, dreamCount, mode: "api" }));
+
+        if (settings.deliveryMode === "api") {
+          await postToApi(canonical, settings);
+          sendResponse({ ok: true, count: canonical.length, dreamCount, mode: "api" });
+          return;
         }
         // Download mode — vrni podatke popupu, ta naredi download
         sendResponse({ ok: true, count: canonical.length, dreamCount, mode: "download", dreams: canonical });
-      })
-      .catch(err => {
+      } catch (err) {
         console.error("[Loom][bg] sync napaka:", err);
-        sendResponse({ ok: false, error: err.message });
-      });
+        sendResponse({ ok: false, error: err.message, code: err.code || null });
+      }
+    })();
     return true;
   }
 });
@@ -223,7 +240,12 @@ function mapToCanonical(record, interpretationText, interpretationSource, interp
   return {
     dream_id: makeUuid5(CCP_NAMESPACE, `${SOURCE_APP}:${record.id}${idSuffix}`),
     source_app: SOURCE_APP,
-    timestamp: record.createdAt || buildTimestamp(record.date, record.time),
+    // record.createdAt je po protokolu v2 vedno prisoten na Dream objektu;
+    // buildTimestamp(record.date) je samo varnostna mreža za robne primere
+    // (starejši/nepopoln export). Prej je klical buildTimestamp(date, time)
+    // — record.time ne obstaja v v2 protokolu (samo ločen `date`), to je
+    // bil mrtev parameter, odstranjen.
+    timestamp: record.createdAt || buildTimestamp(record.date),
     title: record.title || null,
     content: record.content,
     language: record.language || "other",
@@ -254,12 +276,31 @@ function mapToCanonical(record, interpretationText, interpretationSource, interp
 
 // ── API delivery ──────────────────────────────────────────────────────────────
 
-async function postToApi(dreams) {
-  const response = await fetch(LOOM_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dreams }),
-  });
+async function postToApi(dreams, settings) {
+  let response;
+  try {
+    response = await fetch(settings.apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Loom-Token": settings.apiToken || "",
+      },
+      body: JSON.stringify({ dreams }),
+    });
+  } catch (networkErr) {
+    // fetch sam vrže samo pri mrežni napaki (Loom backend ne teče, napačen
+    // URL, itd.) — ločeno sporočilo od HTTP-level napak spodaj, da
+    // uporabnik ve, ali naj preveri da Loom sploh teče, ali pairing token.
+    const err = new Error(chrome.i18n.getMessage("errApiUnreachable", [settings.apiUrl]));
+    err.code = "unreachable";
+    throw err;
+  }
+
+  if (response.status === 401) {
+    const err = new Error(chrome.i18n.getMessage("errApiUnauthorized"));
+    err.code = "unauthorized";
+    throw err;
+  }
   if (!response.ok) {
     const text = await response.text();
     throw new Error(chrome.i18n.getMessage("errApiFailed", [String(response.status), text]));
@@ -301,7 +342,7 @@ function fnvHash(hex) {
   return h.toString(16).repeat(8);
 }
 
-function buildTimestamp(date, time) {
+function buildTimestamp(date) {
   if (!date) return new Date().toISOString();
-  return `${date}T${time || "00:00"}:00.000Z`;
+  return `${date}T00:00:00.000Z`;
 }

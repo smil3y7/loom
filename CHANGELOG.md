@@ -8,6 +8,25 @@ Format sledi [Keep a Changelog](https://keepachangelog.com/), verzije [Semantic 
 
 ---
 
+## [0.4.0] — 2026-09-10
+
+### Added
+- **`/api/ingest` avtentikacija** (`lib/auth.py`, novo) — zahteva veljaven `X-Loom-Token` header; token se generira lokalno ob prvem dostopu (`secrets.token_urlsafe(32)`) in shrani v `{storage_path}/api_token`. `GET /api/token` / `POST /api/token/regenerate` za prikaz/regeneracijo prek Loom UI.
+- Loom UI Nastavitve → nova sekcija "Povezava z Loom Sync extensionom" — prikaže pairing token za copy-paste, gumb za regeneracijo (z opozorilom da invalidira star pairing).
+- Loom Sync extension — popolnoma nov settings zaslon (⚙ gumb v headerju): preklop način pošiljanja (prenos datoteke / direktno v Loom), nastavljiv API URL, polje za pairing token. Prej sta bila oba `DELIVERY_MODE`/`LOOM_API_URL` hardcoded konstanti v kodi.
+- Extension: zgodovina zadnjih 10 sinhronizacij (prej se je shranil samo zadnji zapis, vsak nov sync je prejšnjega prepisal), noga s prikazom verzije extensiona.
+- Extension `manifest.json` dobil fiksen `"key"` (Chrome extension ID zdaj stabilen: `olpdijedjldpggopmkmkijdahigpodob`, ne glede na to iz katere mape/poti je naložen unpacked, ali kasneje objavljen na Chrome Web Store z istim ključem).
+- Testi: `loom/tests/test_auth.py` (6), razširjen `loom/tests/test_api_ingest.py` (+5 za token avtentikacijo).
+
+### Changed
+- **CORS zaklep** (`api/index.py`) — `allow_origins=["*"]` zamenjan z eksplicitno allowlist (Loom UI dev/preview strežnik + fiksen extension origin). `LOOM_ALLOWED_ORIGINS` env var za dodatne origine (npr. bodoč Tauri origin, še ne znan). PREJ: katerakoli spletna stran v istem brskalniku bi lahko poslala cross-origin zahtevo na kateri koli endpoint tega API-ja.
+- `background.js`: `buildTimestamp(date, time)` — `time` parameter odstranjen (mrtev, protokol v2 nima ločenega `time` polja na Dream objektu, samo `date`).
+
+### Security
+- Kombinacija zgornjih dveh sprememb zapira vrzel, kjer bi zlonamerna/kompromitirana spletna stran v istem brskalniku lahko vrinila poljubne "sanje" v lokalni arhiv prek `/api/ingest` brez uporabnikove vednosti (glej razpravo pred to verzijo — prej ne CORS ne token nista obstajala).
+
+---
+
 ## [0.3.0] — 2026-09-10
 
 ### Added

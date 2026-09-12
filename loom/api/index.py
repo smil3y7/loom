@@ -24,13 +24,14 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from lib.schema import CanonicalDream, DreamMetadata
 from lib.config import load_config
 from lib.version import get_version
+from lib.auth import get_or_create_token, verify_token, regenerate_token
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 
@@ -41,9 +42,30 @@ app = FastAPI(
     docs_url="/api/docs",
 )
 
+# Fiksen Chrome extension ID (glej loom-extension/manifest.json "key" polje —
+# ID je deterministično izpeljan iz tega ključa, zato je stabilen ne glede na
+# to, ali je extension naložen unpacked (dev) ali kasneje objavljen na Chrome
+# Web Store z istim ključem).
+LOOM_EXTENSION_ID = "olpdijedjldpggopmkmkijdahigpodob"
+
+# PREJ: allow_origins=["*"] — katerakoli spletna stran v istem brskalniku bi
+# lahko poslala (in prebrala odgovor) cross-origin zahtevo na ta API, ker
+# brskalnik CORS preflight ni imel razloga za zavrnitev. Zdaj eksplicitna
+# allowlist: Loom UI (dev/preview strežnik) + Loom Sync extension.
+#
+# LOOM_ALLOWED_ORIGINS env var (vejica-ločen seznam) doda dodatne origine
+# brez spreminjanja kode — potrebno bo npr. za Tauri sidecar, katerega
+# origin še ni znan dokler se packaging ne začne.
+_default_origins = [
+    "http://localhost:5173", "http://127.0.0.1:5173",   # Loom UI (vite dev)
+    "http://localhost:4173", "http://127.0.0.1:4173",   # Loom UI (vite preview)
+    f"chrome-extension://{LOOM_EXTENSION_ID}",            # Loom Sync extension
+]
+_extra_origins = [o.strip() for o in os.environ.get("LOOM_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Tauri in lokalni development
+    allow_origins=_default_origins + _extra_origins,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -354,15 +376,31 @@ async def api_status():
 # ── Ingest ────────────────────────────────────────────────────────────────────
 
 @app.post("/api/ingest")
-async def api_ingest(request: IngestRequest, background_tasks: BackgroundTasks):
+async def api_ingest(
+    request: IngestRequest,
+    background_tasks: BackgroundTasks,
+    x_loom_token: Optional[str] = Header(None, alias="X-Loom-Token"),
+):
     """
     Sprejme canonical dream objekte iz source appov (Oneiro, extension).
     Shrani jih v IngestedDreamStore (trajno — prej se je vsebina zavrgla in
     samo dream_id šel v embedding queue, kar je pomenilo da embedding step
     ni nikoli našel dejanske vsebine za embedanje). Takoj vrne odgovor,
     embedding generacija gre v ozadje.
+
+    Zahteva veljaven `X-Loom-Token` header (glej lib/auth.py) — obramba v
+    globino poleg CORS zaklepa na app-nivoju; brez tega bi lahko poljubna
+    stran/proces z dostopom do localhost:8000 vrinil poljubne "sanje" v
+    arhiv.
     """
     from lib.schema import CanonicalDream
+
+    config = get_config()
+    if not verify_token(x_loom_token, config.storage_path):
+        raise HTTPException(
+            status_code=401,
+            detail="Neveljaven ali manjkajoč X-Loom-Token. Preveri pairing token v Loom UI → Nastavitve.",
+        )
 
     accepted = 0
     rejected = 0
@@ -370,7 +408,6 @@ async def api_ingest(request: IngestRequest, background_tasks: BackgroundTasks):
 
     try:
         from lib.embeddings import EmbeddingStore
-        config = get_config()
         embed_store = EmbeddingStore(os.path.join(config.storage_path, "embeddings.db"))
 
         for dream_in in request.dreams:
@@ -401,6 +438,30 @@ async def api_ingest(request: IngestRequest, background_tasks: BackgroundTasks):
         "queued_for_embedding": accepted,
         "message": f"Sprejeto {accepted}, zavrnjeno {rejected}",
     }
+
+
+# ── Pairing token ────────────────────────────────────────────────────────────
+# Ta dva endpointa NISTA zaščitena z X-Loom-Token (očitno — GET /api/token je
+# ravno tisto, kar Loom UI Settings stran pokliče, da token sploh lahko
+# prikaže uporabniku za copy-paste). Zaščitena sta izključno prek CORS
+# allowlist zgoraj — samo Loom UI (localhost:5173/4173) sme dobiti odgovor.
+
+@app.get("/api/token")
+async def api_get_token():
+    """Vrni trenutni pairing token (ustvari novega ob prvem klicu)."""
+    config = get_config()
+    return {"token": get_or_create_token(config.storage_path)}
+
+
+@app.post("/api/token/regenerate")
+async def api_regenerate_token():
+    """
+    Prekliče trenutni token, ustvari novega. Vsak extension, ki je bil
+    parjen s starim tokenom, po tem dobiva 401 dokler uporabnik ne
+    prekopira novega tokena — namerno, to je namen regeneracije.
+    """
+    config = get_config()
+    return {"token": regenerate_token(config.storage_path)}
 
 
 # ── Embed ─────────────────────────────────────────────────────────────────────

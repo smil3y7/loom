@@ -49,6 +49,10 @@ export const api = {
   // Health
   health: () => request('/health'),
 
+  // Pairing token za Loom Sync extension (glej loom/lib/auth.py)
+  token: () => request('/api/token'),
+  regenerateToken: () => request('/api/token/regenerate', { method: 'POST' }),
+
   // Status
   status: () => request('/api/status'),
 

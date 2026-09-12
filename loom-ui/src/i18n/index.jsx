@@ -96,6 +96,16 @@ const TRANSLATIONS = {
     'settings.version.backend': 'Verzija engine-a',
     'settings.version.mismatch': 'Verziji se ne ujemata — priporočamo osvežitev strani ali posodobitev enega od delov.',
 
+    'settings.pairing': 'Povezava z Loom Sync extensionom',
+    'settings.pairing.hint': 'Ta token prekopiraj v nastavitve Loom Sync extensiona (Chrome), da lahko sanje pošilja direktno v Loom brez ročnega prenosa datoteke.',
+    'settings.pairing.token': 'Pairing token',
+    'settings.pairing.copy': 'Kopiraj',
+    'settings.pairing.copied': 'Kopirano!',
+    'settings.pairing.regenerate': 'Ustvari nov token',
+    'settings.pairing.regenerate.confirmTitle': 'Ustvari nov pairing token?',
+    'settings.pairing.regenerate.confirmBody': 'Star token bo takoj prenehal delovati — extension bo prenehal pošiljati sanje, dokler ne prekopiraš novega tokena vanj.',
+    'settings.pairing.regenerated': 'Nov token ustvarjen.',
+
     // Help
     'help.title': 'Pomoč',
     'help.what': 'Kaj je Loom?',
@@ -255,6 +265,16 @@ const TRANSLATIONS = {
     'settings.version.ui': 'UI version',
     'settings.version.backend': 'Engine version',
     'settings.version.mismatch': 'Versions do not match — try refreshing the page or updating one of the components.',
+
+    'settings.pairing': 'Loom Sync extension pairing',
+    'settings.pairing.hint': 'Copy this token into the Loom Sync extension settings (Chrome) so it can send dreams directly to Loom without a manual file download.',
+    'settings.pairing.token': 'Pairing token',
+    'settings.pairing.copy': 'Copy',
+    'settings.pairing.copied': 'Copied!',
+    'settings.pairing.regenerate': 'Generate new token',
+    'settings.pairing.regenerate.confirmTitle': 'Generate a new pairing token?',
+    'settings.pairing.regenerate.confirmBody': 'The old token will stop working immediately — the extension will stop sending dreams until you copy the new token into it.',
+    'settings.pairing.regenerated': 'New token generated.',
 
     // Help
     'help.title': 'Help',

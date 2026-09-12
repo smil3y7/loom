@@ -6,7 +6,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      width: 280px;
+      width: 300px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0f0f13;
       color: #e8e4dc;
@@ -15,6 +15,9 @@
     .header {
       padding: 16px 18px 12px;
       border-bottom: 1px solid #1e1e28;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
     }
 
     .header h1 {
@@ -28,6 +31,21 @@
       font-size: 11px;
       color: #6b6878;
       margin-top: 3px;
+    }
+
+    .icon-btn {
+      width: auto;
+      background: none;
+      border: none;
+      color: #6b6878;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 4px;
+      line-height: 1;
+    }
+
+    .icon-btn:hover {
+      color: #c8b8a2;
     }
 
     .status {
@@ -59,6 +77,16 @@
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50%       { opacity: 0.3; }
+    }
+
+    .mode-badge {
+      margin: 0 18px 10px;
+      font-size: 10px;
+      color: #6b6878;
+      background: #1a1a22;
+      border-radius: 4px;
+      padding: 4px 8px;
+      display: inline-block;
     }
 
     .actions {
@@ -126,18 +154,138 @@
     .wrong-page a:hover {
       text-decoration: underline;
     }
+
+    /* ── Settings view ────────────────────────────────────────────────── */
+
+    .settings-panel {
+      padding: 14px 18px 16px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      color: #9a96a8;
+      margin-bottom: 5px;
+    }
+
+    .field .hint {
+      display: block;
+      font-size: 10px;
+      color: #4a4858;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .field input {
+      width: 100%;
+      background: #1a1a22;
+      border: 1px solid #26263a;
+      border-radius: 5px;
+      padding: 7px 9px;
+      font-size: 12px;
+      color: #e8e4dc;
+      font-family: inherit;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: #4a4070;
+    }
+
+    .mode-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .mode-toggle button {
+      flex: 1;
+      background: #1a1a22;
+      color: #6b6878;
+      font-size: 11px;
+      padding: 8px 6px;
+    }
+
+    .mode-toggle button.active {
+      background: #3d3560;
+      color: #d4c8f0;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    /* ── History ──────────────────────────────────────────────────────── */
+
+    .history {
+      padding: 0 18px 4px;
+    }
+
+    .history-toggle {
+      background: none;
+      border: none;
+      color: #4a4858;
+      font-size: 10px;
+      cursor: pointer;
+      padding: 4px 0;
+      text-align: left;
+      width: auto;
+    }
+
+    .history-toggle:hover {
+      color: #6b6878;
+    }
+
+    .history-list {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-item {
+      font-size: 10px;
+      color: #4a4858;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .history-item.error {
+      color: #8a5a5a;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+
+    .footer {
+      padding: 8px 18px;
+      border-top: 1px solid #1e1e28;
+      font-size: 9px;
+      color: #3a3848;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h1 id="extTitle"></h1>
-    <p id="subtitle"></p>
+    <div>
+      <h1 id="extTitle"></h1>
+      <p id="subtitle"></p>
+    </div>
+    <button class="icon-btn" id="btnSettingsToggle" title="">⚙</button>
   </div>
 
   <div id="main">
     <!-- populated by popup.js -->
   </div>
+
+  <div class="footer" id="footer"></div>
 
   <script src="popup.js"></script>
 </body>

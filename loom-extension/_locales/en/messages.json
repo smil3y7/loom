@@ -97,5 +97,62 @@
     "placeholders": {
       "message": { "content": "$1" }
     }
+  },
+  "errApiUnauthorized": {
+    "message": "Loom rejected the connection (invalid or expired pairing token). Open Settings and check the token."
+  },
+  "errApiUnreachable": {
+    "message": "Could not reach Loom at $URL$ — check that Loom is running and the API URL is correct.",
+    "placeholders": {
+      "url": { "content": "$1" }
+    }
+  },
+  "settingsTitle": {
+    "message": "Settings"
+  },
+  "settingsBack": {
+    "message": "Back"
+  },
+  "settingsSave": {
+    "message": "Save"
+  },
+  "settingsSaved": {
+    "message": "Saved"
+  },
+  "deliveryModeDownload": {
+    "message": "Download file"
+  },
+  "deliveryModeApi": {
+    "message": "Direct to Loom"
+  },
+  "currentModeDownload": {
+    "message": "Mode: file download"
+  },
+  "currentModeApi": {
+    "message": "Mode: direct to Loom"
+  },
+  "apiUrlLabel": {
+    "message": "Loom API URL"
+  },
+  "apiTokenLabel": {
+    "message": "Pairing token"
+  },
+  "apiTokenPlaceholder": {
+    "message": "paste token here"
+  },
+  "apiTokenHint": {
+    "message": "Find it in Loom UI → Settings → Loom Sync extension pairing."
+  },
+  "historyTitle": {
+    "message": "History"
+  },
+  "historyEntryError": {
+    "message": "failed"
+  },
+  "footerVersion": {
+    "message": "Loom Sync v$VERSION$",
+    "placeholders": {
+      "version": { "content": "$1" }
+    }
   }
 }

@@ -97,5 +97,62 @@
     "placeholders": {
       "message": { "content": "$1" }
     }
+  },
+  "errApiUnauthorized": {
+    "message": "Loom je zavrnil povezavo (napačen ali potekel pairing token). Odpri Nastavitve in preveri token."
+  },
+  "errApiUnreachable": {
+    "message": "Loom ni dosegljiv na $URL$ — preveri, da Loom teče in da je API URL pravilen.",
+    "placeholders": {
+      "url": { "content": "$1" }
+    }
+  },
+  "settingsTitle": {
+    "message": "Nastavitve"
+  },
+  "settingsBack": {
+    "message": "Nazaj"
+  },
+  "settingsSave": {
+    "message": "Shrani"
+  },
+  "settingsSaved": {
+    "message": "Shranjeno"
+  },
+  "deliveryModeDownload": {
+    "message": "Prenos datoteke"
+  },
+  "deliveryModeApi": {
+    "message": "Direktno v Loom"
+  },
+  "currentModeDownload": {
+    "message": "Način: prenos datoteke"
+  },
+  "currentModeApi": {
+    "message": "Način: direktno v Loom"
+  },
+  "apiUrlLabel": {
+    "message": "Loom API URL"
+  },
+  "apiTokenLabel": {
+    "message": "Pairing token"
+  },
+  "apiTokenPlaceholder": {
+    "message": "prilepi token sem"
+  },
+  "apiTokenHint": {
+    "message": "Najdeš ga v Loom UI → Nastavitve → Povezava z Loom Sync extensionom."
+  },
+  "historyTitle": {
+    "message": "Zgodovina"
+  },
+  "historyEntryError": {
+    "message": "neuspešno"
+  },
+  "footerVersion": {
+    "message": "Loom Sync v$VERSION$",
+    "placeholders": {
+      "version": { "content": "$1" }
+    }
   }
 }
