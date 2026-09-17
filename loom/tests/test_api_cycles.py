@@ -13,17 +13,22 @@ from fastapi.testclient import TestClient
 
 import api.index as api_module
 from lib.config import Config
+from lib.auth import get_or_create_token
 
 
 @pytest.fixture
 def client():
     """Vsak test dobi svoj prazen storage/cache — isti izolacijski pattern
     kot test_api_ingest.py, brez tega bi si testi delili modulske globalne
-    cache-e (_config, _dreams_cache)."""
+    cache-e (_config, _dreams_cache). Vrne (client, auth_headers) — /api/ingest
+    od uvedbe X-Loom-Token zahteva veljaven token."""
     tmp = tempfile.mkdtemp()
     api_module._config = Config({"storage": {"path": tmp}, "sources": {}})
     api_module.invalidate_caches()
-    yield TestClient(api_module.app)
+    token = get_or_create_token(tmp)
+    tc = TestClient(api_module.app)
+    tc.headers.update({"X-Loom-Token": token})  # velja tudi za GET-e, ki ga ignorirajo
+    yield tc
     api_module._config = None
     api_module.invalidate_caches()
 
