@@ -2,7 +2,7 @@
 // Upravlja UI in izvede download (URL.createObjectURL deluje v popup kontekstu).
 // Vse uporabniško besedilo prek chrome.i18n — glej _locales/{en,sl}/messages.json.
 
-const ONEIRO_URL = "https://oneiro-delta.vercel.app";
+const ONEIRO_URL = "https://sentria-oneiro.vercel.app";
 const DEFAULT_SETTINGS = {
   deliveryMode: "download",
   apiUrl: "http://localhost:8000/api/ingest",

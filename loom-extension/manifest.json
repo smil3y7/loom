@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkCZBrefM0P93vGx108d7rydBC3umRHtWkrBA1QiU37brlpUVoYyT7He8JNyxhHd2qZyoZT4gcA0mMmjHNYEvOVqve794pr5Op09Ff+hyJd+NyIloqbkMjnAmuZzST5MMn8g8KbnwD6J3BuOTUyx8+JFv5pmP4ClKhEa50ycBDIaSQ5grs5MbuQ8kjiEpV86ZgBgtsmrbaTjkqsM9kkMKvGssqedRlJ/tBa/G51VIh5qXV6H5+/EDG6FcfOJMv9vmSAK8mjvgj+8ML0M0ma+pw1vaE3cj5yLNvhjV/WAlgg2DdUhcuEQhCHbQX3AHUtrK6gGjn6tu3WzHGrgvHDRGzwIDAQAB",
@@ -12,7 +12,7 @@
     "storage"
   ],
   "host_permissions": [
-    "https://oneiro-delta.vercel.app/*",
+    "https://sentria-oneiro.vercel.app/*",
     "http://localhost:8000/*"
   ],
   "action": {

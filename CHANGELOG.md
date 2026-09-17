@@ -8,6 +8,13 @@ Format sledi [Keep a Changelog](https://keepachangelog.com/), verzije [Semantic 
 
 ---
 
+## [0.4.1] — 2026-09-10
+
+### Fixed
+- Oneiro se je preselil na novo domeno (`oneiro-delta.vercel.app` → `sentria-oneiro.vercel.app`) — posodobljeno na treh mestih, ki so prej imela staro domeno hardcoded: `manifest.json` `host_permissions` (brez tega Chrome extensionu ne dovoli dostopa do taba na novi domeni, ne glede na JS), `background.js` in `popup.js` `ONEIRO_URL` konstanta.
+
+---
+
 ## [0.4.0] — 2026-09-10
 
 ### Added

@@ -11,7 +11,7 @@
 // uporabnik PIN. Namesto tega prosimo samo Oneiro stran (medtem ko je
 // odprta in odklenjena), naj nam vrne že dešifrirane podatke.
 
-const ONEIRO_URL = "https://oneiro-delta.vercel.app";
+const ONEIRO_URL = "https://sentria-oneiro.vercel.app";
 const SOURCE_APP = "oneiro";
 const CCP_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 

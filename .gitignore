@@ -10,3 +10,5 @@ _loom_default/
 _resources_backup/
 _temp_code_upload/
 _versions/
+
+loom-extension-private-key.pem
